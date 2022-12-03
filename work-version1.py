@@ -3,6 +3,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 import pandas as pd
 from IPython.display import display  #
+from scipy.stats import norm
+import statistics
 from scipy.interpolate import *
 
 
@@ -16,6 +18,7 @@ def run():
     plot_data(x, y)
 
     # einfache interpolation
+    'GENAU VERSTEHEN WIE DIE REGERESSION HIER FUNKTIONIERT ---> KLEINSTER QUAD FEHLER'
     # f1 = np.polyfit(x, y, 1)
     f2 = np.polyfit(x, y, 2)
     f3 = np.polyfit(x, y, 3)
@@ -24,9 +27,8 @@ def run():
     # ax.plot(x, np.polyval(f2,x), '-', x, np.polyval(f3,x), '--')
     ax.scatter(x_data, y_data, s=2)
     ax.plot(x, (x - 5) ** 2, color="black")
-    'GENAU VERSTEHEN WIE DIE REGERESSION HIER FUNKTIONIERT ---> KLEINSTER QUAD FEHLER'
+
     ax.plot(x, np.polyval(f2, x), '-.', x, np.polyval(f3, x), '--')
-    # plt.plot(x, (x-5)**2, 'o', x, np.polyval(f2,x), '-', x, np.polyval(f3,x), '--')
     plt.show()
 
 
@@ -37,7 +39,10 @@ def generate_a_dataset():
 
 
 def function(x):
+    # NORMALVERTEILTER GAUS
     noise = np.random.normal(0, 1, len(x))
+    # GLEICHVERTEILTE STÖRUNG
+    #noise= np.random.rand(len(x))
     y_data = (x - 5) ** 2 + noise  # function
 
     return y_data
@@ -71,6 +76,7 @@ def get_data_from_df(df):
 
 def plot_density_of_domain(df):
     values_of_domain = get_values_of_domain(df)
+    values_of_domain.plot(kind="hist")
     values_of_domain.plot.kde()
 
 #TODO: "BEKOMME ICH HIER DIE FUNKTION RAUS ?"
@@ -79,7 +85,6 @@ def get_values_of_domain(df):
     del column_of_df[-1]  # column_of_df[:-1]
     values_of_domain = df[column_of_df]
     return values_of_domain
-
 
 
 run()
