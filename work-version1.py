@@ -34,6 +34,7 @@ def run():
 
 def generate_a_dataset():
     x_data = np.random.rand(1000) * 10
+    #x_data = np.random.normal(0,10,1000)
     y_data = function(x_data)
     return x_data, y_data
 
