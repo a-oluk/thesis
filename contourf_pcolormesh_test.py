@@ -24,7 +24,7 @@ ydata= df['Y'].to_numpy()
 X2, Y2 = np.meshgrid(xdata, ydata)
 #print(len(x),len(y),len(Z2))
 fig = plt.figure(2)
-plt.pcolormesh(xdata,ydata,Z2)
+plt.pcolormesh(xdata,ydata,Z2) #Create a pseudocolor plot with a non-regular rectangular grid.
 plt.colorbar()
 
 #
