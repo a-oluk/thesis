@@ -6,7 +6,8 @@ from matplotlib import pyplot as plt
 
 import _params as param
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
-
+#from as_class import GaussianProcessRegressor
+# TODO: IMPLEMENT HOW TO INSERT GPR TO THE GUI
 
 class Gui():
     """
@@ -16,9 +17,10 @@ class Gui():
     """
 
     def __init__(self):
+        #self.gpr = GaussianProcessRegressor()
         self.root = tk.Tk()
         self.root.title("Main Window")
-        #self.root.state('zoom') #Full window or not
+        # self.root.state('zoom') #Full window or not
         # self.root.geometry("1000x1000")
         # self.root.state('zoomed')
         ''' '''
@@ -58,7 +60,8 @@ class Gui():
                         print("Test Tab 3")
                 return tab_text
 
-            self.tabs_plot = self.frame_tabs.bind("<<NotebookTabChanged>>", on_tab_selected)  # change the tab name always
+            self.tabs_plot = self.frame_tabs.bind("<<NotebookTabChanged>>",
+                                                  on_tab_selected)  # change the tab name always
 
             # define the tabs
             self.tab_1 = tk.Frame(self.frame_tabs)
@@ -71,15 +74,13 @@ class Gui():
             self.frame_tabs.add(self.tab_3, text="Tab 3")
 
         # Function for SUB-Frame
-        def create_sub_frame(parent, frame_text, fill, expand):
+        def create_sub_frame(parent, frame_text, fill="x", expand="yes"):
             frame = tk.LabelFrame(parent, text=frame_text)
             frame.pack(fill=fill, expand=expand, pady=2, padx=5)
             return frame
 
         # Function for creating Space for writing
-        def create_param_entry(parent, label_text, parameter, row, column):
-            pad_x = 5
-            pad_y = 5
+        def create_param_entry(parent, label_text, parameter, row, column, pad_x=5, pad_y=5):
             label = tk.Label(parent, text=label_text, width=20)
             label.grid(row=row, column=2 * column, padx=pad_x, pady=pad_y)
             entry = tk.Entry(parent, width=10)
@@ -89,10 +90,10 @@ class Gui():
             entry.bind('<Return>', self.set_params)
             return label, entry
 
-        self.function = create_sub_frame(self.frame1, "Function", "x", "yes")
-        self.frame_conditions = create_sub_frame(self.frame1, "Conditions", "x", "yes")
-        self.frame_hyperparam = create_sub_frame(self.frame1, "Hyperparameter", "x", "yes")
-        self.frame_testdata = create_sub_frame(self.frame1, "Testdataset", "x", "yes")
+        self.function = create_sub_frame(self.frame1, "Function")
+        self.frame_conditions = create_sub_frame(self.frame1, "Conditions")
+        self.frame_hyperparam = create_sub_frame(self.frame1, "Hyperparameter")
+        self.frame_testdata = create_sub_frame(self.frame1, "Testdataset")
 
         self.subframe_plot = create_sub_frame(self.frame2, "Plot", "x", "yes")
 
@@ -112,12 +113,39 @@ class Gui():
                                                                   param.N_0, 1, 0)
         self.label_param_N, self.param_N = create_param_entry(self.frame_hyperparam, " N iterations", param.N, 2, 0)
 
-        self.label_test_data_size, self.param_test_data_size = create_param_entry(self.frame_testdata, " Test Data Size", param.test_data_size, 0,
-                                                                      0)
+        self.label_repetition, self.repetition = create_param_entry(self.frame_hyperparam, " Repetition ", param.repetition, 3, 0)
+
+        self.label_test_data_size, self.param_test_data_size = create_param_entry(self.frame_testdata,
+                                                                                  " Test Data Size",
+                                                                                  param.test_data_size, 0,
+                                                                                  0)
+        ################################################# CONTROL WINDOW ############################################
+        self.frame_control = create_sub_frame(self.frame1, "Control")
+
+        self.check_box_hidden = tk.IntVar()
+        tk.Checkbutton(self.frame_control, text="", variable=self.check_box_hidden).grid(row=0, column=1, padx=5,
+                                                                                         pady=5)
+
+        self.label_hidden = tk.Label(self.frame_control, text="hidden ?", width=10)
+        self.label_hidden.grid(row=0, column=0, padx=5)
+
+        self.btn_gpr_step = tk.Button(self.frame_control, text='step', command=self.step_gpr)
+        self.btn_gpr_step.grid(row=1, column=1, padx=5)
+
+        self.btn_gpr_start = tk.Button(self.frame_control, text='start simulation',
+                                       command=self.start_gpr)
+        self.btn_gpr_start.grid(row=1, column=2, sticky="W", padx=2, pady=0)
+
+
+
+        ##############################################################################################################
+
+
 
         ########################## CREATES THE PLOT AT START OF THE GUI ###############################################
         if True:
-            plot_size = (6,3)
+            plot_size = (6, 3)
+
             def create_plot():
                 fig = plt.figure(figsize=plot_size, dpi=100)
                 fig.set_tight_layout(True)
@@ -143,7 +171,7 @@ class Gui():
             self.aquisition_fct_eigf = tk.IntVar(value=0)
             self.aquisition_fct_other = tk.IntVar(value=0)
 
-            frame_checkbutton= self.frame4
+            frame_checkbutton = self.frame4
 
             tk.Label(frame_checkbutton, text="Aquisition Function", width=25, font=font_txt).grid(row=0, column=0)
 
@@ -160,34 +188,31 @@ class Gui():
                                      onvalue=1,
                                      offvalue=0)
             # organize the button position and the text before
-            button1.grid(row=1, column=0,sticky='W')
-            button2.grid(row=2, column=0,sticky='W')
-            button3.grid(row=3, column=0,sticky='W')
+            button1.grid(row=1, column=0, sticky='W')
+            button2.grid(row=2, column=0, sticky='W')
+            button3.grid(row=3, column=0, sticky='W')
 
         # Buttons For Use of Aquisition Function
         if True:
             self.var_kernel_button = tk.IntVar(value=0)
 
-            frame_checkbutton= self.frame4
+            frame_checkbutton = self.frame4
 
             tk.Label(frame_checkbutton, text="Kernel Function", width=25, font=font_txt).grid(row=5, column=0)
 
             button1 = tk.Radiobutton(frame_checkbutton, text="Radial Basis Functions",
                                      variable=self.var_kernel_button,
-                                     value= 0)
+                                     value=0)
             button2 = tk.Radiobutton(frame_checkbutton, text="Periodic Kernel",
                                      variable=self.var_kernel_button,
-                                     value= 1)
+                                     value=1)
             button3 = tk.Radiobutton(frame_checkbutton, text="Linear",
                                      variable=self.var_kernel_button,
-                                     value= 2)
+                                     value=2)
             # organize the button position and the text before
-            button1.grid(row=6, column=0,sticky='W')
-            button2.grid(row=7, column=0,sticky='W')
-            button3.grid(row=8, column=0,sticky='W')
-
-
-
+            button1.grid(row=6, column=0, sticky='W')
+            button2.grid(row=7, column=0, sticky='W')
+            button3.grid(row=8, column=0, sticky='W')
 
     # Function for setting parameters
     # it only works, if there is the parameter also available
@@ -204,6 +229,17 @@ class Gui():
 
         param.RESME = float(self.param_RESME.get())
 
+    def start_gpr(self):
+        print("hello")
+        # self.scenario.ego.traffic_light_information_type = self.var.get()
+        # self.get_information_type()
+        # param.t_sim = float(self.param_t_sim.get())
+        # hidden = self.check_box_hidden.get()
+        # 'the simulation begins here'
+        # while self.step_scenario(hidden):
+        #     continue
+    def step_gpr(self):
+        print("SES")
 
 
     def show(self):

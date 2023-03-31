@@ -12,3 +12,5 @@ N = 15
 RESME = 1
 
 test_data_size = 30
+
+repetition = 5

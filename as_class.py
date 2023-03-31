@@ -4,12 +4,14 @@ from scipy.spatial.distance import cdist
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import random
 
+from functions import *
+
 
 class GaussianProcessRegressor:
     def __init__(self, kernel, function, dim, X, SSN):
         self.N_gpr_iterations = 30
         self.kernel = kernel
-        self.alpha = None
+        self.alpha = None  # TODO: WO GENAU ALPHA EINFÜHREN ?!
         self.function = function
 
         # INITIAL DATA
@@ -19,8 +21,9 @@ class GaussianProcessRegressor:
         else:
             self.Y = self.function(self.X)
 
-        self.fstar = []
-        self.Sstar = []
+        self.fstar, self.Sstar = [], []  # results in iteration
+        self.fstar_, self.Sstar_ = [], []  # Save results from iterations in list
+        self.fstar__, self.Sstar__ = [], []  # Save results from repetition
         ################################################
         self.linspaces = []
         start, stop, num = SSN
@@ -44,6 +47,7 @@ class GaussianProcessRegressor:
             Kstar = self.kernel(self.Xstar, self.Xstar)
             # Kstar += np.eye(len(self.Xstar))
             self.Sstar = Kstar - np.dot(Lk.T, Lk)
+
             return self.fstar, self.Sstar
 
         except np.linalg.LinAlgError:
@@ -64,6 +68,16 @@ class GaussianProcessRegressor:
         return None
 
         ################################################
+
+    def reset(self, X, dim):
+        # TODO: RESET FOR REPETITION
+        self.X = X
+        if dim == 1:
+            self.Y = np.array([self.function(i) for i in self.X])
+        else:
+            self.Y = self.function(self.X)
+        self.fstar_, self.Sstar_ = [], []
+        print("RESET WORKED")
 
     # UPDATE THE DATA
     def update_data(self, x_new, ):
@@ -117,45 +131,12 @@ if True:
                 K[i, j] = sigma_f * np.exp(-0.5 * np.dot(diff, diff) / (l ** 2))
         return K
 
-# FUNCTIONS TO REGRESSION
-if True:
-    def function_1dim(X):
-        # x = X[:,0]
-        return 2 * np.sin(2 * X) + X - 11
-        # x = X[:,0]
-        # if x < -5:
-        #     return np.sin(3 * x) * x
-        # elif x >= -5 and x < 5.5:
-        #     return (-x - 2)
-        # else:
-        #     return 2 * np.sin(2 * x) + x - 11
-
-
-    def function_1dim_1(X):
-        if X < -5:
-            return np.sin(3 * X) * X
-        elif X >= -5 and X < 5.5:
-            return (-X - 2)
-        else:
-            return 2 * np.sin(2 * X) + X - 11
-
-
-    def function_2dim(X):
-        value = np.sin(X[:, 0]) + 3 * np.cos(X[:, 1])
-        return value
-
-
-    def function_4dim(X):
-        return np.sin(X[:, 0]) + 3 * np.cos(X[:, 1]) + np.sin(X[:, 2]) + 3 * np.cos(X[:, 3])
-
 # AQUISITION FUNCTION
 if True:
     def get_ei_term(Sstar, shape_like):
         Sstar_diag = np.diag(Sstar)
         ei_term = Sstar_diag.reshape(shape_like)
         return ei_term
-
-
     def get_gf_term(meshgrid_vstacked, fstar, x_obs, y_obs, shape_like):
         meshgrid_arr = meshgrid_vstacked
 
@@ -170,17 +151,11 @@ if True:
         # Calculate the absolute difference between each point and its nearest neighbor value
         diff_arr = (Z - nn_values) ** 2
         return diff_arr
-
-
-    # NORMALIZE THE MATRIX
     def norm_matrix(matrix):
         max_val = matrix.max()
         # A_norm = A / max_val slower than np.divide
         matrix_norm = np.divide(matrix, max_val)
         return matrix_norm
-
-
-    # CALCULATE THE X_NEW
     def get_new_x_for_eigf(aquisition_function, Xstar):
         max_index = np.argmax(aquisition_function)
         # Convert the 1D index to 2D indices
@@ -189,129 +164,228 @@ if True:
         return np.array([Xstar[idx]])
 
 
-    # EVALUATION DATA
-    def data_for_evaluation(Xstar, fstar, function,dim, test_size=30):
-        indices = np.random.choice(fstar.size, size=test_size, replace=False)
-        y_pred = fstar.flatten()[indices]
-        # y_true = function(Xstar[indices]) FUNKTIONIERT NICHT GUT
-        if dim == 1:  # DIM 1
-            y_true = np.array([function(i) for i in Xstar[indices]])[:,0] # WEIL DOPPELTE ARRAY TODO: ALTERNATIVE
-        else:
-            y_true = function(Xstar[indices])
-        return y_pred, y_true
+# EVALUATION DATA
+def data_for_evaluation(Xstar, fstar, function, dim, test_size=30):
+    indices = np.random.choice(fstar.size, size=test_size, replace=False)
+    y_pred = fstar.flatten()[indices]
+    # y_true = function(Xstar[indices]) FUNKTIONIERT NICHT GUT
+    if dim == 1:  # DIM 1
+        y_true = np.array([function(i) for i in Xstar[indices]])[:, 0]  # WEIL DOPPELTE ARRAY TODO: ALTERNATIVE
+    else:
+        y_true = function(Xstar[indices])
+    return y_pred, y_true
 
 
-    def get_rsme(y_pred, y_true):
-        squared_error = ((y_true) - y_pred) ** 2
-        rsme = np.sum(squared_error / len(squared_error))
-        return rsme
+def get_rsme(y_pred, y_true):
+    squared_error = ((y_true) - y_pred) ** 2
+    rsme = np.sum(squared_error / len(squared_error))
+    return rsme
 
 
-    def get_r2_score(y_pred, y_true):
-        mean_true = sum(y_true) / len(y_true)
+def get_r2_score(y_pred, y_true):
+    mean_true = sum(y_true) / len(y_true)
 
-        ss_tot = sum((y_true - mean_true) ** 2)
+    ss_tot = sum((y_true - mean_true) ** 2)
 
-        ss_res = sum((y_true - y_pred) ** 2)
+    ss_res = sum((y_true - y_pred) ** 2)
 
-        score = 1 - (ss_res / ss_tot)
+    score = 1 - (ss_res / ss_tot)
 
-        return score
+    return score
+
+def calculate_average_scores(r2_score__, rsme_score__):
+    length_ = len(r2_score__[0])
+    length__ = len(r2_score__)
+    r2_score__avarage, rsme_score__avarage = [0] * length_, [0] * length_
+
+    for i in range(length__):
+        # Loop over each array
+        for j in range(length_):
+            # Add the value at the current position to the running total
+            r2_score__avarage[j] += r2_score__[i][j]
+            rsme_score__avarage[j] += rsme_score__[i][j]
+
+    r2_score__avarage = [x / length__ for x in r2_score__avarage]
+    rsme_score__avarage = [x / length__ for x in rsme_score__avarage]
+
+    return r2_score__avarage, rsme_score__avarage
 
 
-def start_gpr(kernel=rbf_kernel, function=function_2dim, dim=2, N_0=5, gp_iterations=20, test_size=30, alpha=0.5,
-              SSN=(-5, 5, 100)):
+def plot_scores(x, r2, rsme, avarage=False, i=None):
+    if avarage == False:
+        fig, (ax2, ax1) = plt.subplots(1, 2)
+
+        ax1.plot(x, r2)
+        ax2.plot(x, rsme)
+
+        fig.suptitle("Repetition number {}".format(i))
+
+        # Set the plots
+        ax1.set_title("R2 score over iteration")
+        ax1.set_xlabel("Iteration")
+        ax1.set_ylabel("R2 Score")
+        ax1.set_ylim(0, 1.05)
+        ax1.axhline(y=1, ls="--", c="grey")
+
+        ax2.set_title("RSME score over iteration")
+        ax2.set_xlabel("Iteration")
+        ax2.set_ylabel("RSME Score")
+
+    if avarage == True:
+        fig, (ax2, ax1) = plt.subplots(1, 2)
+
+        ax1.plot(x, r2)
+        ax2.plot(x, rsme)
+
+        fig.suptitle("Scores over {} repetition(s)".format(i))
+
+        ax1.set_title("Avarage R2 score")
+        ax1.set_xlabel("Iteration")
+        ax1.set_ylabel("R2 Score")
+        ax1.set_ylim(0, 1.05)
+        ax1.axhline(y=1, ls="--", c="grey")
+
+        ax2.set_title(" Avarage RSME score")
+        ax2.set_xlabel("Iteration")
+        ax2.set_ylabel("RSME Score")
+    plt.show()
+    return None
+
+
+def start_gpr(kernel=rbf_kernel, function=function_2dim, SSN=(-5, 5, 100), dim=2, N_0=5, repetition=5, gp_iterations=20,
+              test_size=30,
+              alpha=0.5):
+    if alpha < 0 or alpha > 1:
+        user_input = input("Enter a value between 0 and 1: ")
+        alpha = float(user_input)
+        # raise TypeError("Wanted strawberry, got grape.")
     start, stop, num = SSN  # SSN
     X = np.random.uniform(start, stop, (N_0, dim))  # INITIAL DATA
 
+    # generate a GPR Object, which use the kernels
     gpr = GaussianProcessRegressor(kernel, function, dim, X, (start, stop, num))
 
     fstar_i, Sstar_i = gpr.GPR()
     # List to save results for each iteration
-    fstar_, Sstar_ = [fstar_i], [Sstar_i]
 
-    evaluation_arr = []
+    gpr.fstar_.append(fstar_i)
+    gpr.Sstar_.append(Sstar_i)
 
-    for i in range(gp_iterations):
-        print("Start Iteration Number: ", i + 1)
-        ei_term = get_ei_term(Sstar_i, shape_like=gpr.grid_shape)
-        gf_term = get_gf_term(gpr.Xstar, fstar_i, x_obs=gpr.X, y_obs=gpr.Y, shape_like=gpr.grid_shape)
+    evaluation__ = []
 
-        ei_normalized = norm_matrix(ei_term)
-        gf_normalized = norm_matrix(gf_term)
-        aquisition_func = alpha * ei_normalized + (1 - alpha) * gf_normalized
+    r2_score__, rsme_score__ = [], []
+    for p in range(repetition):
+        r2_score_, rsme_score_ = [], []  # RESET THE SCORES
+        for q in range(gp_iterations):
+            print("Start Iteration Number: ", q + 1)
+            ei_term = get_ei_term(Sstar_i, shape_like=gpr.grid_shape)
+            gf_term = get_gf_term(gpr.Xstar, fstar_i, x_obs=gpr.X, y_obs=gpr.Y, shape_like=gpr.grid_shape)
 
-        x_new = get_new_x_for_eigf(aquisition_func, gpr.Xstar)
+            ei_normalized = norm_matrix(ei_term)
+            gf_normalized = norm_matrix(gf_term)
 
-        gpr.update_data(x_new)  # add the new data point to dataset
+            aquisition_func = alpha * ei_normalized + (
+                    1 - alpha) * gf_normalized  # Alpha 1 => AQUIDISTANT # Alpha 0 => JUST Y wert
 
-        fstar_i, Sstar_i = gpr.GPR()
-        # ITERATION
+            x_new = get_new_x_for_eigf(aquisition_func, gpr.Xstar)
 
-        # SAVE fstar/Sstar
-        fstar_.append(fstar_i)
-        Sstar_.append(Sstar_i)
+            gpr.update_data(x_new)  # add the new data point to dataset
 
-    ############
-    y_pred, y_true = data_for_evaluation(gpr.Xstar, gpr.fstar, function,dim, test_size)
-    rsme_iter = get_rsme(y_pred, y_true)
-    r2_iter = get_r2_score(y_pred, y_true)
-    evaluation_arr.append([rsme_iter, r2_iter])
-    ############
+            fstar_i, Sstar_i = gpr.GPR()
+            # ITERATION
 
-    if dim == 2:
-        fig, (ax1, ax2) = plt.subplots(1, 2)
+            # SAVE fstar/Sstar
+            gpr.fstar_.append(fstar_i)
+            gpr.Sstar_.append(Sstar_i)
 
-        c1 = ax1.imshow(fstar_i.reshape(gpr.grid_shape), origin='lower', extent=[-5, 5, -5, 5], cmap='coolwarm')
-        ax1.scatter(gpr.X[:, 0], gpr.X[:, 1], c=gpr.Y, cmap='coolwarm', edgecolors='black', linewidths=1)
-        divider = make_axes_locatable(ax1)
-        cax = divider.append_axes('right', size='5%', pad=0.05)
-        fig.colorbar(c1, cax=cax, orientation='vertical')
+            y_pred, y_true = data_for_evaluation(gpr.Xstar, gpr.fstar, function, dim, test_size)
+            r2_i = get_r2_score(y_pred, y_true)
+            r2_score_.append(r2_i)
 
-        c2 = ax2.imshow(np.diag(Sstar_i).reshape(gpr.grid_shape), origin='lower', extent=[-5, 5, -5, 5],
-                        cmap='coolwarm')
-        ax2.scatter(gpr.X[:, 0], gpr.X[:, 1], c=gpr.Y, cmap='coolwarm', edgecolors='black', linewidths=1)
+            rsme_i = get_rsme(y_pred, y_true)
+            rsme_score_.append(rsme_i)
+        ############
+        # FINAL VALUE AT THE END
+        evaluation__.append([rsme_i, r2_i])
 
-        divider = make_axes_locatable(ax2)
-        cax = divider.append_axes('right', size='5%', pad=0.05)
-        fig.colorbar(c2, cax=cax, orientation='vertical');
+        # SAVE THE LISTS OVER WHOLE ITERATIONS IN __
+        r2_score__.append(r2_score_)
+        rsme_score__.append(rsme_score_)
+        ############
+        plot_scores(np.arange(gp_iterations), r2_score__[p], rsme_score__[p], avarage=False, i=p + 1)
 
-        ax1.set_xlabel('X1')
-        ax2.set_xlabel('X1')
-        ax1.set_ylabel('X2')
+        # PLOT RESULTS FOR 1 and 2 DIM
+        if dim == 2:
+            fig, (ax1, ax2) = plt.subplots(1, 2)
 
-        fig.suptitle('GPR  Iteration: {}'.format(gp_iterations))
-        for i, txt in enumerate(range(len(gpr.X[:, 0]))):
-            if i > N_0 - 1:
-                ax1.annotate(txt + 1 - N_0, (gpr.X[i, 0], gpr.X[i, 1]))
-                ax2.annotate(txt + 1 - N_0, (gpr.X[i, 0], gpr.X[i, 1]))
-        plt.show()
+            c1 = ax1.imshow(fstar_i.reshape(gpr.grid_shape), origin='lower', extent=[start, stop, start, stop],
+                            cmap='coolwarm')
+            ax1.scatter(gpr.X[:, 0], gpr.X[:, 1], c=gpr.Y, cmap='coolwarm', edgecolors='black', linewidths=1)
+            divider = make_axes_locatable(ax1)
+            cax = divider.append_axes('right', size='5%', pad=0.05)
+            fig.colorbar(c1, cax=cax, orientation='vertical')
 
-    elif dim == 1:
-        x = gpr.grids[0]
-        y = np.array([function_1dim_1(i) for i in gpr.grids[0]])
+            c2 = ax2.imshow(np.diag(Sstar_i).reshape(gpr.grid_shape), origin='lower', extent=[start, stop, start, stop],
+                            cmap='coolwarm')
+            ax2.scatter(gpr.X[:, 0], gpr.X[:, 1], c=gpr.Y, cmap='coolwarm', edgecolors='black', linewidths=1)
 
-        plt.figure()
-        plt.scatter(gpr.X, gpr.Y)
-        plt.plot(x, gpr.fstar)
-        plt.errorbar(x, fstar_i, yerr=np.diag(Sstar_i))
+            divider = make_axes_locatable(ax2)
+            cax = divider.append_axes('right', size='5%', pad=0.05)
+            fig.colorbar(c2, cax=cax, orientation='vertical');
 
-        plt.plot(x, y)
+            ax1.set_xlabel('X1')
+            ax2.set_xlabel('X1')
+            ax1.set_ylabel('X2')
 
-        for i, txt in enumerate(range(len(gpr.X))):
-            if i > N_0 - 1:
-                plt.annotate(txt + 1, (gpr.X[i], gpr.Y[i]))
-        plt.show()
-    return gpr, evaluation_arr
+            fig.suptitle('GPR  Iteration: {}'.format(gp_iterations))
+            for i, txt in enumerate(range(len(gpr.X[:, 0]))):
+                if i > N_0 - 1:
+                    ax1.annotate(txt + 1 - N_0, (gpr.X[i, 0], gpr.X[i, 1]))
+                    ax2.annotate(txt + 1 - N_0, (gpr.X[i, 0], gpr.X[i, 1]))
+            plt.show()
+
+        elif dim == 1:
+            x = gpr.grids[0]
+            y = np.array([function(i) for i in gpr.grids[0]])
+
+            plt.figure()
+            plt.scatter(gpr.X, gpr.Y)
+            plt.plot(x, gpr.fstar)
+            plt.errorbar(x, fstar_i, yerr=np.diag(Sstar_i))
+
+            plt.plot(x, y)
+
+            for i, txt in enumerate(range(len(gpr.X))):
+                if i > N_0 - 1:
+                    plt.annotate(txt + 1, (gpr.X[i], gpr.Y[i]))
+            plt.show()
+        gpr.reset(X, dim)
+
+    # calculate the average scores for every iteration and plot these
+    r2_score__avarage, rsme_score__avarage = calculate_average_scores(r2_score__, rsme_score__)
+    plot_scores(np.arange(gp_iterations), r2_score__avarage, rsme_score__avarage, avarage=True, i=p + 1)
+
+    return gpr, evaluation__
 
 
 random.seed(20)
 # TWO DIMENSIONAL
-#gpr_2dim, evaluation = start_gpr(kernel=rbf_kernel, function=function_2dim, dim=2, N_0=5, gp_iterations=10,test_size=30, alpha=0.5, SSN=(-5, 5, 30))
+# gpr_2dim, evaluation = start_gpr(kernel=rbf_kernel, function=function_2dim, dim=2, N_0=10, repetition=1,gp_iterations=30, test_size=30, alpha=0.5, SSN=(-5, 5, 40))
+
+#########################################################
+# TODO: HIER SEHR SCHLECHTE ERGEBNISSE -> DA STARK VERÄNDERLICH | KERNEL PARAMETER ÄNDERN BASED ON ABSTAND VON PUNKTEN !
+#  !!      BASED ON OBSERVED POINTS ABSTAND (MAX oder MIN ABSTAND) EVENTUELL
+#  !! ODER BASED --> GEHT IMMER ZU SEHR AUF NULL ZURÜCK !!!!!!!!!!!!!
+#gpr_2dimm, evaluation = start_gpr(kernel=rbf_kernel, function=function_2dimm, SSN=(-10, 10, 40), dim=2, N_0=10, repetition=1,gp_iterations=30, test_size=30, alpha=0.5)
+##########################################################
+
 # ONE DIMENSIONAL
-#gpr_1dim, evaluation = start_gpr(function=function_1dim_1, dim=1, N_0=5, gp_iterations=30, test_size=30, alpha=0.5, SSN=(-10, 10, 1000))
-# FOUR DIMENSIONAL
-gpr_4dim, evaluation = start_gpr(function=function_4dim, dim=4, N_0=20, gp_iterations=30, test_size=30, alpha=0.5, SSN=(-10, 10, 1000))
+#gpr_1dim, evaluation = start_gpr(function=function_1dim, SSN=(-10, 10, 100), dim=1, N_0=5,repetition = 1, gp_iterations=30, test_size=30, alpha=0.5)
+#gpr_1dim, evaluation = start_gpr(function=function_1dim_1, SSN=(-10, 10, 100), dim=1, N_0=5,repetition = 1, gp_iterations=30, test_size=30, alpha=0.5)
+gpr_1dim, evaluation = start_gpr(function=function_1dim_2, SSN=(-10, 10, 100), dim=1, N_0=3, repetition = 1, gp_iterations=15, test_size=30, alpha=0.5)
+
+# FOUR DIMENSIONAL #AUFLÖSUNG LEIDER NUR 5
+# gpr_4dim, evaluation = start_gpr(function=function_4dim,SSN=(-5, 5, 3), dim=4, N_0=20, repetition=10, gp_iterations=10, test_size=10,alpha=0.5)
 
 
 print(evaluation)
