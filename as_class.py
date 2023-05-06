@@ -3,7 +3,6 @@ from matplotlib import pyplot as plt
 from scipy.spatial.distance import cdist
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-import eval
 from eval import *
 import random
 
@@ -11,19 +10,20 @@ from functions import *
 
 
 class GaussianProcessRegressor:
-    def __init__(self, kernel, function, dim, X_init, SSN):
+    def __init__(self, kernel, function, dim, X_init,Y_init, SSN):
         self.kernel = kernel
         self.function = function
 
         self.rep_nr = 1  # # iteration number
         self.iter_nr = 0  # iteration number
 
+        # Initial Data
         self.X_init = X_init
-        self.Y_init = self.function(self.X_init)
+        self.Y_init = Y_init
 
-        # INITIAL DATA
+        # Observed Data
         self.X = X_init
-        self.Y = self.function(self.X)
+        self.Y = Y_init
 
         self.fstar, self.Sstar = [], []  # results in iteration
         self.fstar_, self.Sstar_ = [], []  # Save results from iterations in list
@@ -44,15 +44,15 @@ class GaussianProcessRegressor:
 
     def GPR(self):
         self.K = self.kernel(self.X, self.X)
-        # jittering is used here, to ensure the matrix is pos definit (numerical problem)
+
         try:
-            L = np.linalg.cholesky(self.K + 1e-8 * np.eye(self.K.shape[0]))  # with jittering
+            # jittering := adding a small value to guarantee pos. definit by: + 1e-8 * np.eye(self.K.shape[0])
+            L = np.linalg.cholesky(self.K + 1e-8 * np.eye(self.K.shape[0]))
             Lk = np.linalg.solve(L, self.kernel(self.X, self.Xstar))
 
             self.fstar = np.dot(Lk.T, np.linalg.solve(L, self.Y))
 
-            Kstar = self.kernel(self.Xstar, self.Xstar) #TODO: WARUM GEHT DAS NICHT SO SAUBER ?
-            # Kstar += np.eye(len(self.Xstar))
+            Kstar = self.kernel(self.Xstar, self.Xstar)
 
             self.Sstar = Kstar - np.dot(Lk.T, Lk)
 
@@ -76,8 +76,8 @@ class GaussianProcessRegressor:
 
         ################################################
 
+    # keine anwendung für Abgabe
     def reset(self, X):
-        # TODO: RESET FOR REPETITION
         self.X = X
         self.Y = self.function(self.X)
 
@@ -88,12 +88,9 @@ class GaussianProcessRegressor:
         self.Y = Y_init_new
 
     # UPDATE THE DATA
-    def update_data(self, x_new):
+    def update_data(self, x_new,y_new):
         self.X = np.vstack([self.X, x_new])
-        y_new = self.function(x_new)
         self.Y = np.append(self.Y, y_new)
-
-        return None
 
 
 ''' HELPFUNCTIONS '''
@@ -148,53 +145,6 @@ if True:
         return np.array([Xstar[idx]])
 
 
-# EVALUATION DATA
-def data_for_evaluation(Xstar, fstar, function, dim, test_size=30):
-    indices = np.random.choice(fstar.size, size=test_size, replace=False)
-    y_pred = fstar.flatten()[indices]
-    if dim == 1:  # DIM 1
-        y_true = np.array([function(i) for i in Xstar[indices]])[:, 0]  # WEIL ARRAYS in ARRAY
-    else:
-        y_true = function(Xstar[indices])
-    return y_pred, y_true
-
-
-def get_rsme(y_pred, y_true):
-    squared_error = (y_true - y_pred) ** 2
-    rsme = np.sum(squared_error / len(squared_error))
-    return rsme
-
-
-def get_r2_score(y_pred, y_true):
-    mean_true = sum(y_true) / len(y_true)
-
-    ss_tot = sum((y_true - mean_true) ** 2)
-
-    ss_res = sum((y_true - y_pred) ** 2)
-
-    score = 1 - (ss_res / ss_tot)
-
-    return score
-
-
-def calculate_average_scores(r2_score__, rsme_score__):
-    length_ = len(r2_score__[0])
-    length__ = len(r2_score__)
-    r2_score__average, rsme_score__average = [0] * length_, [0] * length_
-
-    for i in range(length__):
-        # Loop over each array
-        for j in range(length_):
-            # Add the value at the current position to the running total
-            r2_score__average[j] += r2_score__[i][j]
-            rsme_score__average[j] += rsme_score__[i][j]
-
-    r2_score__average = [x / length__ for x in r2_score__average]
-    rsme_score__average = [x / length__ for x in rsme_score__average]
-
-    return r2_score__average, rsme_score__average
-
-
 def plot_scores(x, r2, rsme, average=False, i=None):
     show_scores_plotted = True
     if average == False:
@@ -244,15 +194,6 @@ def get_init_data(function,dim,SSN, N_0,):
     return X,Y
 
 
-def step_gpr(kernel=rbf_kernel, function=function_2dim, SSN=(-5, 5, 100), dim=2, N_0=5, repetition=5, gp_iterations=20,
-              test_size=30,
-              alpha=0.5):
-    if alpha < 0 or alpha > 1:
-        user_input = input("Alpha must be a value between 0 and 1: ")
-        alpha = float(user_input)
-
-
-
 def start_gpr(kernel=rbf_kernel, function=function_2dim, SSN=(-5, 5, 100), dim=2, N_0=5, repetition=5, gp_iterations=20,
               test_size=30,
               alpha=0.5):
@@ -290,7 +231,7 @@ def start_gpr(kernel=rbf_kernel, function=function_2dim, SSN=(-5, 5, 100), dim=2
             fstar_i, Sstar_i = gpr.GPR()
 
             # GET SCORES
-            y_pred, y_true = data.data_for_evaluation(Xstar= gpr.Xstar, fstar= gpr.fstar, function= function, dim= param.dim, test_size=param.test_size)
+            y_pred, y_true, indices = data.data_for_evaluation(Xstar= gpr.Xstar, fstar= gpr.fstar, function= function, dim= param.dim, test_size=param.test_data_size)
             rsme_i, r2_i = eval.get_rsme_r2_scores(y_pred, y_true)
 
             # SAVE fstar/Sstar

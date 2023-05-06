@@ -1,5 +1,8 @@
 from functions import *
 
+
+
+
 example_txt = "Example 1.1"
 function = function_1dim
 dim = 1
@@ -13,6 +16,7 @@ init_data_size = 3
 test_data_size = 30
 
 alpha = 0.7
+
 
 
 def init_kernel_params():
@@ -36,7 +40,7 @@ def get_params(var_example):
         init_data_size = 5
         repetitions = 1
         iterations = 30
-        test_size = 30
+        test_data_size = 30
         alpha = 0.5
     elif var_example == 1:
         example_txt = "Example 1.2"
@@ -47,7 +51,7 @@ def get_params(var_example):
         init_data_size = 5
         repetitions = 2
         iterations = 30
-        test_size = 30
+        test_data_size = 30
         alpha = 0.5
     elif var_example == 2:
         example_txt = "Example 1.3"
@@ -58,7 +62,7 @@ def get_params(var_example):
         init_data_size = 3
         repetitions = 1
         iterations = 15
-        test_size = 30
+        test_data_size = 30
         alpha = 0.5
     elif var_example == 3:
         example_txt = "Example 2.1"
@@ -68,26 +72,38 @@ def get_params(var_example):
         init_data_size = 10
         repetitions = 1
         iterations = 30
-        test_size = 30
+        test_data_size = 30
         alpha = 0.5
         SSN = (-5, 5, 40)
-    elif var_example == 4:
+    elif var_example ==4:
+        example_txt = "Example 3.1"
+        kernel = rbf_kernel
+        function = function_3dim
+        dim = 3
+        init_data_size = 20
+        repetitions = 2
+        iterations = 20
+        test_data_size = 30
+        alpha = 0.5
+        SSN = (-5, 5, 20)
+
+    elif var_example == 5:
         example_txt = "Example 4.1"
         kernel = rbf_kernel
         function = function_4dim
-        SSN = (-5, 5, 3)
+        SSN = (-5, 5, 8)
         dim = 4
         init_data_size = 20
-        repetitions = 10
-        iterations = 10
-        test_size = 10
+        repetitions = 3
+        iterations = 80
+        test_data_size = 10
         alpha = 0.5
     elif var_example == 10:
         example_txt = "individual"
 
     else:
         return None
-    return example_txt, kernel, function, SSN, dim, iterations, repetitions, init_data_size, test_size, alpha
+    return example_txt, kernel, function, SSN, dim, iterations, repetitions, init_data_size, test_data_size, alpha
 
 
 def get_function(str):
@@ -99,6 +115,8 @@ def get_function(str):
         return function_1dim_2, 1
     elif str == "Example 2.1":
         return function_2dim, 2
+    elif str == "Example 3.1":
+        return function_3dim, 3
     elif str == "Example 4.1":
         return function_4dim, 4
     else:

@@ -36,6 +36,10 @@ def function_2dimm(X):
     return 100 * np.sqrt(np.abs(X[:, 1] - 0.01 * X[:, 0] ** 2)) + 0.01 * np.abs(X[:, 0] + 10)
 
 
+def function_3dim(X):
+    return np.sin(X[:, 0]) + 3 * np.cos(X[:, 1]) + np.sin(X[:, 2])
+
+
 def function_4dim(X):
     return np.sin(X[:, 0]) + 3 * np.cos(X[:, 1]) + np.sin(X[:, 2]) + 3 * np.cos(X[:, 3])
 
@@ -53,7 +57,7 @@ if True:
         return K
 
 
-    def periodic_kernel(x1, x2, ls=1, p=3):
+    def periodic_kernel(x1, x2, ls=1, p=1):
         n1, d = x1.shape
         n2, d = x2.shape
         K = np.zeros((n1, n2))
