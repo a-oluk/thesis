@@ -23,6 +23,15 @@ def function_1dim_1(X):
 def function_1dim_2(X):
     return 10 * np.sin(2 * X) - X ** 2 - 10
 
+@np.vectorize
+def function_1dim_3(X):
+    # From paper of EIGF and which is from: Bayesian treed Gaussian process models - RB Gramacy
+    # https://www.proquest.com/docview/305004297?pq-origsite=gscholar&fromopenview=true
+    if X < 10:
+        return np.sin(np.pi * X / 5) + 1 / 5 * np.cos(4 * np.pi * X / 5)
+    else:
+        return X / 10 - 0.8
+
 
 def function_2dim(X):
     return np.sin(X[:, 0]) + 3 * np.cos(X[:, 1])
@@ -30,9 +39,10 @@ def function_2dim(X):
 
 # TODO: KERNEL PARAMETER ÄNDERN -> SONST SEHR SCHLECHTE ERGEBNISSE
 def function_2dimm(X):
-    if False: # ANDERES BEISPIEL
-        return (X[:, 0] + 2 * X[:, 1] - 7)** 2 + (2 * X[:, 0] + X[:, 1] - 5)**2 #Booth function (watch Wikipedia) ABER ZU HOHE WERTE
-    #value = 100 * np.sqrt(np.abs(X[:, 1] - 0.01 * X[:, 0] ** 2)) + 0.01 * np.abs(X[:, 0] + 10)
+    if False:  # ANDERES BEISPIEL
+        return (X[:, 0] + 2 * X[:, 1] - 7) ** 2 + (
+                    2 * X[:, 0] + X[:, 1] - 5) ** 2  # Booth function (watch Wikipedia) ABER ZU HOHE WERTE
+    # value = 100 * np.sqrt(np.abs(X[:, 1] - 0.01 * X[:, 0] ** 2)) + 0.01 * np.abs(X[:, 0] + 10)
     return 100 * np.sqrt(np.abs(X[:, 1] - 0.01 * X[:, 0] ** 2)) + 0.01 * np.abs(X[:, 0] + 10)
 
 

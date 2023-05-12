@@ -32,7 +32,7 @@ class Data:
 
         self.final_score__ = []
 
-    def reset(self, dim):
+    def reset(self):
         self.X_obs = self.X_init
         self.Y_obs = self.Y_init
 
@@ -51,8 +51,8 @@ class Data:
         y_pred = fstar.flatten()[indices]
         return y_pred
 
-    def data_for_evaluation(self, Xstar, fstar, function, dim, test_size=30):
-        indices = np.random.choice(fstar.size, size=test_size, replace=False)
+    def data_for_evaluation(self, Xstar, fstar, function, dim, indices):
+        #indices = np.random.choice(fstar.size, size=test_size, replace=False)
         y_pred = fstar.flatten()[indices]
         if dim == 1:  # DIM 1
             y_true = np.array([function(i) for i in Xstar[indices]])[:, 0]  # WEIL DOPPELTE ARRAY TODO: ALTERNATIVE

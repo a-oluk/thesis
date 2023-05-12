@@ -31,7 +31,7 @@ rbf_lengthscale, rbf_variance, perio_lengthscale, perio_periodicity = init_kerne
 
 
 def get_params(var_example):
-    if var_example == 0:
+    if var_example == 1.1:
         example_txt = "Example 1.1"
         kernel = rbf_kernel
         function = function_1dim
@@ -42,7 +42,7 @@ def get_params(var_example):
         iterations = 30
         test_data_size = 30
         alpha = 0.5
-    elif var_example == 1:
+    elif var_example == 1.2:
         example_txt = "Example 1.2"
         kernel = rbf_kernel
         function = function_1dim_1
@@ -53,7 +53,7 @@ def get_params(var_example):
         iterations = 30
         test_data_size = 30
         alpha = 0.5
-    elif var_example == 2:
+    elif var_example == 1.3:
         example_txt = "Example 1.3"
         kernel = rbf_kernel
         function = function_1dim_2
@@ -64,7 +64,19 @@ def get_params(var_example):
         iterations = 15
         test_data_size = 30
         alpha = 0.5
-    elif var_example == 3:
+    elif var_example == 1.4:
+        example_txt = "Example 1.4"
+        kernel = rbf_kernel
+        function = function_1dim_3
+        SSN = (0, 20, 500)
+        dim = 1
+        init_data_size = 3
+        repetitions = 1
+        iterations = 25
+        test_data_size = 30
+        alpha = 0.5
+
+    elif var_example == 2.1:
         example_txt = "Example 2.1"
         kernel = rbf_kernel
         function = function_2dim
@@ -75,7 +87,7 @@ def get_params(var_example):
         test_data_size = 30
         alpha = 0.5
         SSN = (-5, 5, 40)
-    elif var_example ==4:
+    elif var_example ==3.1:
         example_txt = "Example 3.1"
         kernel = rbf_kernel
         function = function_3dim
@@ -87,7 +99,7 @@ def get_params(var_example):
         alpha = 0.5
         SSN = (-5, 5, 20)
 
-    elif var_example == 5:
+    elif var_example == 4.1:
         example_txt = "Example 4.1"
         kernel = rbf_kernel
         function = function_4dim
@@ -98,7 +110,7 @@ def get_params(var_example):
         iterations = 80
         test_data_size = 10
         alpha = 0.5
-    elif var_example == 10:
+    elif var_example == 999:
         example_txt = "individual"
 
     else:
@@ -119,6 +131,10 @@ def get_function(str):
         return function_3dim, 3
     elif str == "Example 4.1":
         return function_4dim, 4
+
+    # KANN ICH DAS NICHT ÜBER VALUE MACHEN ?
+    elif str == "Example 1.4":
+        return function_1dim_3,1
     else:
         None
 

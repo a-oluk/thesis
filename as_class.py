@@ -81,7 +81,6 @@ class GaussianProcessRegressor:
         self.X = X
         self.Y = self.function(self.X)
 
-        # self.fstar_, self.Sstar_ = [], []
 
     def reset_init_data(self,X_init_new,Y_init_new):
         self.X = X_init_new
@@ -208,7 +207,7 @@ def start_gpr(kernel=rbf_kernel, function=function_2dim, SSN=(-5, 5, 100), dim=2
     # OBJEKTE ERZEUGEN
     data = Data(X, Y)
     # generate a GPR Object, which use the kernels
-    gpr = GaussianProcessRegressor(kernel, function, dim, X, (start, stop, num))
+    gpr = GaussianProcessRegressor(kernel, function, dim, X,Y, (start, stop, num))
     eval = Eval(ei=True, gf=True, normalize=True, alpha=0.5)
 
     fstar_i, Sstar_i = gpr.GPR()
@@ -221,6 +220,7 @@ def start_gpr(kernel=rbf_kernel, function=function_2dim, SSN=(-5, 5, 100), dim=2
     for p in range(repetition):
         data.reset_scores()
         gpr.iter_nr = 1
+        ind = np.random.choice(fstar_i.size, size=test_size, replace=False)
         for q in range(gp_iterations):
             print(gpr.iter_nr)
             print("Start Iteration Number: ", q + 1)
@@ -231,15 +231,17 @@ def start_gpr(kernel=rbf_kernel, function=function_2dim, SSN=(-5, 5, 100), dim=2
             fstar_i, Sstar_i = gpr.GPR()
 
             # GET SCORES
-            y_pred, y_true, indices = data.data_for_evaluation(Xstar= gpr.Xstar, fstar= gpr.fstar, function= function, dim= param.dim, test_size=param.test_data_size)
+
+            y_pred, y_true, indices = data.data_for_evaluation(Xstar= gpr.Xstar, fstar= gpr.fstar, function= function, dim= dim, indices=ind)
             rsme_i, r2_i = eval.get_rsme_r2_scores(y_pred, y_true)
 
             # SAVE fstar/Sstar
-            gpr.update_data(x_new)  # add the new data point to dataset
+            y_new = function(x_new)
+            gpr.update_data(x_new,y_new)  # add the new data point to dataset
             gpr.fstar_.append(fstar_i)
             gpr.Sstar_.append(Sstar_i)
 
-            data.update_data_(fstar_i, Sstar_i, x_new, function(x_new))
+            data.update_data_(fstar_i, Sstar_i, x_new, y_new)
             data.save_scores_(rsme_i, r2_i)
 
             gpr.iter_nr += 1
@@ -302,8 +304,8 @@ def start_gpr(kernel=rbf_kernel, function=function_2dim, SSN=(-5, 5, 100), dim=2
                     plt.annotate(txt + 1, (data.X_obs[i], data.Y_obs[i]))
             if not show_plots:
                 plt.show()
-        gpr.reset(X, dim)
-        data.reset(dim)
+        gpr.reset(X)
+        data.reset()
         gpr.rep_nr += 1
 
     # calculate the average scores for every iteration and plot these
@@ -339,3 +341,7 @@ random.seed(20)
 #    print(f"Repetition {i} : RSME: {values[0]} , R2: {values[1]}")
 
 #print(data)
+gpr_1dim, evaluation = start_gpr(function=function_1dim_3, SSN=(0, 20, 1000), dim=1, N_0=3, repetition=1, gp_iterations=20, test_size=30, alpha=0.5)
+
+
+
