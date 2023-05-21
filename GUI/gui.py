@@ -490,7 +490,7 @@ class Gui():
             self.state_frame.grid(row=3, column=3, sticky="W", padx=2, pady=0)
 
             self.btn_load_param = tk.Button(self.frame_example, text='Load Parameter', bg="#c0c0c0",
-                                            command=self.load_params_for_example)
+                                            command=self.load_params) # load params for example
             self.btn_load_param.grid(row=0, column=3, padx=2, pady=0)
 
             self.btn_create_gpr_model = tk.Button(self.frame_example, text='Create GPR model', bg="#c0c0c0",
@@ -549,8 +549,8 @@ class Gui():
         self.canvas_figure_.draw()
 
     def add_plot_r2(self):
-        if self.gpr.iter_nr == param.iterations+1 and self.gpr.rep_nr == param.repetitions:
-            x = np.arange(self.gpr.iter_nr)
+        if self.Data.iteration == param.iterations + 1 and self.Data.repetition == param.repetitions:
+            x = np.arange(self.Data.iteration)
             self.r2_iter_lines = []
             for i in np.arange(np.array(self.Data.r2_score__).shape[0]):
                 y = np.array(self.Data.r2_score__[i])
@@ -578,8 +578,9 @@ class Gui():
         return None
 
     def add_plot_rsme(self):
-        if self.gpr.iter_nr == param.iterations+1 and self.gpr.rep_nr == param.repetitions:
-            x = np.arange(self.gpr.iter_nr)
+        #if self.gpr.iter_nr == param.iterations+1 and self.gpr.rep_nr == param.repetitions:
+        if self.Data.iteration == param.iterations + 1 and self.Data.repetition == param.repetitions:
+            x = np.arange(self.Data.iteration)
 
             self.rsme_iter_lines = []
             for i in np.arange(np.array(self.Data.rsme_score__).shape[0]):
@@ -604,7 +605,7 @@ class Gui():
         self.canvas_figure_.draw()
         return None
 
-    def load_params_for_example(self):
+    def load_params(self):
         def delete_params():
             widgets_to_clear = (self.param_function, self.param_dim, self.param_SSN, self.param_iterations,
                                 self.param_repetitions, self.param_init_data_size, self.param_test_data_size,
@@ -713,9 +714,8 @@ class Gui():
     def get_y_new(self, x):
         return param.function(x)
 
-    def create_test_data(self):
+    def create_test_data(self): #TODO: muss in EVAL REIN
         indices = np.random.choice(self.gpr.fstar.size, size=param.test_data_size, replace=False)
-        print(indices)
         if param.dim == 1:  # DIM 1
             y_true = np.array([param.function(i) for i in self.gpr.Xstar[indices]])[:,
                      0]  # respect double array structure
@@ -723,7 +723,8 @@ class Gui():
             y_true = param.function(self.gpr.Xstar[indices])
         self.Data.X_test = self.gpr.Xstar[indices]
         self.Data.Y_test_true = y_true
-        self.Data.test_data_indices = indices
+        #self.Data.test_data_indices = indices
+        return indices
 
     def new_init_data(self):
         start, stop, num = param.SSN
@@ -773,10 +774,10 @@ class Gui():
 
     def step_gpr(self, stepwise=0):
         # Start the calculation on a separate thread
+        print(self.Data.iteration,self.Data.repetition)
+        if not stepwise and self.Data.iteration <= param.iterations+1 and self.Data.repetition <= param.repetitions:
 
-        if not stepwise and self.gpr.iter_nr <= param.iterations+1 and self.gpr.rep_nr <= param.repetitions:
-
-            if self.gpr.iter_nr == param.iterations+1 and self.gpr.rep_nr == param.repetitions:
+            if self.Data.iteration == param.iterations+1 and self.Data.repetition == param.repetitions:
                 self.Data.save_scores__()  # before finish - save results
 
                 r2__average, rsme__average = self.Eval.calculate_average_scores(self.Data.r2_score__,
@@ -787,7 +788,7 @@ class Gui():
                 self.label_state.config(text="GPR FINISHED")
                 if param.dim == 2:
                     plt.figure()
-                    plt.imshow(self.Data.fstar_[-1].reshape(self.gpr.grid_shape), origin='lower', extent=[param.SSN[0],
+                    plt.imshow(self.Data.fstar_[-1].reshape(self.gpr.grids[0].shape), origin='lower', extent=[param.SSN[0],
                                                                                                           param.SSN[1],
                                                                                                           param.SSN[0],
                                                                                                           param.SSN[1]],
@@ -797,50 +798,54 @@ class Gui():
                                 linewidths=1)
 
                 return 1
-            elif self.gpr.iter_nr == param.iterations+1 and self.gpr.rep_nr <= param.repetitions:
-                self.gpr.iter_nr = 0
-                self.gpr.rep_nr += 1
+            elif self.Data.iteration == param.iterations+1 and self.Data.repetition <= param.repetitions:
+                self.Data.iteration = 0
+                self.Data.repetition += 1
 
                 self.Data.save_data_from_repetition()
                 self.Data.save_scores__()  # before next repetition - save results
                 self.prepare_data_for_new_repetition()
 
-            print("Start: Iteration {}/".format(self.gpr.iter_nr), param.iterations,
-                  "Repetition {}/".format(self.gpr.rep_nr), param.repetitions)
+            print("Start: Iteration {}/".format(self.Data.iteration), param.iterations,
+                  "Repetition {}/".format(self.Data.repetition), param.repetitions)
 
-            self.label_iter_nr_value.config(text="{}/{}".format(self.gpr.iter_nr, param.iterations))
-            self.label_rep_nr_value.config(text="{}/{}".format(self.gpr.rep_nr, param.repetitions))
+            self.label_iter_nr_value.config(text="{}/{}".format(self.Data.iteration, param.iterations))
+            self.label_rep_nr_value.config(text="{}/{}".format(self.Data.repetition, param.repetitions))
 
             start_time = time.time()  # start timer for GPR
 
-            fstar_i, Sstar_i = self.gpr.GPR()  # do GPR
-
+            fstar_i, Sstar_i = self.gpr.gp()  # do GPR
             # Create test dataset
-            if self.gpr.iter_nr == 0 and self.gpr.rep_nr == 1:
-                self.create_test_data()
+            if self.Data.iteration == 0 and self.Data.repetition == 1:
+                global indices_for_test_data # global so it can used any iteration / repetition
+                indices_for_test_data = self.create_test_data()
 
-            aquisition_func = self.Eval.get_aquisition_function(self.gpr.Xstar, fstar_i, x_obs=self.gpr.X,
-                                                                y_obs=self.gpr.Y, Sstar=Sstar_i,
-                                                                shape_like=self.gpr.grid_shape)  # GET Aquisition Function
+            aquisition_func = self.Eval.get_aquisition_function(self.gpr.Xstar, fstar_i, x_obs=self.gpr.X_observed,
+                                                                y_obs=self.gpr.Y_observed, Sstar=Sstar_i,
+                                                                shape_like=self.gpr.grids[0].shape)  # GET Aquisition Function
 
             x_new = self.Eval.get_new_x_for_eigf(aquisition_func, self.gpr.Xstar)  # Calculate x_new
             y_new = self.get_y_new(x_new)
 
-            y_pred = fstar_i.flatten()[self.Data.test_data_indices]  # prediction
+            y_pred = fstar_i.flatten()[indices_for_test_data]  # prediction
             rsme_i, r2_i = self.Eval.get_rsme_r2_scores(y_pred, self.Data.Y_test_true)  # calculate the scores
 
             # For Time
             if True:
                 iteration_time = time.time() - start_time  # calculate the time needed for iteration
                 td = datetime.timedelta(seconds=iteration_time)
-                hmsm = str(td).split('.')[0] + '.' + str(td).split('.')[1][:3]
+                print(td)
+                try:
+                    hmsm = str(td).split('.')[0] + '.' + str(td).split('.')[1][:3]
+                except IndexError:
+                    hmsm = "0.000"
                 self.iter_time_value.config(text="{}".format(hmsm))  # configure the time value
 
             print("Iteration Finished - Time: {}".format(hmsm))
 
             def plot_2dim_fstar():
                 plt.figure()
-                plt.imshow(fstar_i.reshape(self.gpr.grid_shape), origin='lower', extent=[param.SSN[0],
+                plt.imshow(fstar_i.reshape(self.gpr.grids[0].shape), origin='lower', extent=[param.SSN[0],
                                                                                          param.SSN[1],
                                                                                          param.SSN[0],
                                                                                          param.SSN[1]],
@@ -848,7 +853,7 @@ class Gui():
                 plt.scatter(self.Data.X_obs[:, 0], self.Data.X_obs[:, 1], c=self.Data.Y_obs, cmap='coolwarm',
                             edgecolors='black',
                             linewidths=1)
-                plt.title("Repetition: {} Iterations {}".format(self.gpr.rep_nr, self.gpr.iter_nr + 1))
+                plt.title("Repetition: {} Iterations {}".format(self.Data.repetition, self.Data.iteration + 1))
 
             def plt_1dim_fstar():
                 plt.figure()
@@ -876,7 +881,7 @@ class Gui():
             self.gpr.update_data(x_new, y_new)  # add the new data point to the observed data
             self.Data.update_data_(fstar_i, Sstar_i, x_new, y_new)
             self.Data.save_scores_(rsme_i, r2_i)
-            self.gpr.iter_nr += 1
+            self.Data.iteration += 1
 
             # FOR DEBUGGING
             # if param.dim == 2 and len(self.Data.fstar_) >= 2:

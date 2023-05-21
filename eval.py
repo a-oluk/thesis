@@ -14,7 +14,7 @@ class Data:
         self.X_test = None
         self.Y_test_true = None
 
-        self.test_data_indices = None
+        #self.test_data_indices = None
 
         self.X_obs = self.X_init
         self.Y_obs = self.Y_init
@@ -32,6 +32,9 @@ class Data:
 
         self.final_score__ = []
 
+        self.repetition = 1
+        self.iteration = 0
+
     def reset(self):
         self.X_obs = self.X_init
         self.Y_obs = self.Y_init
@@ -47,7 +50,7 @@ class Data:
         self.Y_obs = np.append(self.Y_obs, y_new)
         return self.X_obs, self.Y_obs
 
-    def get_prediction(self,fstar,indices):
+    def get_prediction(self,fstar, indices):
         y_pred = fstar.flatten()[indices]
         return y_pred
 
@@ -68,10 +71,6 @@ class Data:
     def save_scores__(self):
         self.r2_score__.append(self.r2_score_)
         self.rsme_score__.append(self.rsme_score_)
-
-    def save_average_scores__(self, r2_score__average, rsme_score__average):
-        self.r2_score__average = r2_score__average
-        self.rsme_score__average = rsme_score__average
 
     # Update final score of the repetition
     def save_final_score(self, rsme_i, r2_i):
