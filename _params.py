@@ -1,7 +1,17 @@
 from functions import *
 
-
-
+'''
+Initial Parameters defined: 
+    - example_txt       = Name of the function
+    - function          = the function which is used
+    - dim               = Dimension of the function
+    - SSN               = Start, stop, and number of points for search space (RoI := Region of Interest)
+    - iterations        = Number of iterations for the fpr
+    - repetitions       = Number of repetitions for the gpr
+    - init_data_size    = Initial data size
+    - test_data_size    = Test data size
+    - alpha             = Alpha value for calculations
+'''
 
 example_txt = "Example 1.1"
 function = function_1dim
@@ -17,19 +27,30 @@ test_data_size = 30
 
 alpha = 0.7
 
-
-
+'''
+Kernel Parameters:
+    - rbf_lengthscale     = RBF kernel lengthscale parameter
+    - rbf_variance        = RBF kernel variance parameter
+    - perio_lengthscale   = Periodic kernel lengthscale parameter
+    - perio_periodicity   = Periodic kernel periodicity parameter
+    - lin_slope           = Linear kernel slope parameter
+    - lin_intercept       = Linear kernel intercept parameter
+'''
 def init_kernel_params():
     rbf_lengthscale = 1.0
     rbf_variance = 1.0
     perio_lengthscale = 1.0
     perio_periodicity = 1.0
-    return rbf_lengthscale, rbf_variance, perio_lengthscale, perio_periodicity
+    lin_slope =  1
+    lin_intercept = 0
+    return rbf_lengthscale, rbf_variance, perio_lengthscale, perio_periodicity, lin_slope, lin_intercept
 
 
-rbf_lengthscale, rbf_variance, perio_lengthscale, perio_periodicity = init_kernel_params()
+rbf_lengthscale, rbf_variance, perio_lengthscale, perio_periodicity, lin_slope, lin_intercept = init_kernel_params()
 
-
+'''
+Example Parameters 
+'''
 def get_params(var_example):
     if var_example == 1.1:
         example_txt = "Example 1.1"
@@ -87,7 +108,7 @@ def get_params(var_example):
         test_data_size = 30
         alpha = 0.5
         SSN = (-5, 5, 40)
-    elif var_example ==3.1:
+    elif var_example == 3.1:
         example_txt = "Example 3.1"
         kernel = rbf_kernel
         function = function_3dim
@@ -117,6 +138,9 @@ def get_params(var_example):
         return None
     return example_txt, kernel, function, SSN, dim, iterations, repetitions, init_data_size, test_data_size, alpha
 
+'''
+get the function and dimension
+'''
 
 def get_function(str):
     if str == "Example 1.1":
@@ -134,15 +158,29 @@ def get_function(str):
 
     # KANN ICH DAS NICHT ÜBER VALUE MACHEN ?
     elif str == "Example 1.4":
-        return function_1dim_3,1
+        return function_1dim_3, 1
     else:
         None
 
+"""
+    Returns the kernel function based on the given kernel variant and associated parameters.
 
-def get_kernel(var_kernel, l=rbf_lengthscale, v=rbf_variance, ls=perio_lengthscale, p=perio_periodicity):
+    Input:
+        var_kernel (int): Variant of the kernel - get from Radiobutton of gui
+        
+    Returns:
+        function: kernel function
+        
+    Raises:
+        None
+    """
+
+def get_kernel(var_kernel):  #, l=rbf_lengthscale, v=rbf_variance, ls=perio_lengthscale, p=perio_periodicity, ):
     if var_kernel == 0:
         return lambda X1, X2: rbf_kernel(X1, X2, l=rbf_lengthscale, v=rbf_variance)
     elif var_kernel == 1:
         return lambda X1, X2: periodic_kernel(X1, X2, ls=perio_lengthscale, p=perio_periodicity)
     elif var_kernel == 2:
-        return lambda X1, X2: linear_kernel(X1, X2)
+        return lambda X1, X2: linear_kernel(X1, X2,beta_0= lin_intercept,beta_1=lin_slope)
+    else:
+        return None

@@ -1,5 +1,6 @@
-from as_class import *
-from eval import *
+from GPR import GaussianProcessRegressor
+from data_storage import Data
+from PerformanceAnalysis import Acquisition, Metrics
 import _params as param
 
 import datetime
@@ -8,11 +9,13 @@ import time
 import ast
 
 import sympy as sp
+import numpy as np
 
 import tkinter as tk
 from tkinter import ttk
 import tkinter.font as tkFont
 
+from matplotlib import pyplot as plt
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 from matplotlib.backend_bases import key_press_handler
 from matplotlib.ticker import MaxNLocator
@@ -20,18 +23,23 @@ from matplotlib.ticker import MaxNLocator
 
 class Gui():
     """
-        GUI class.
+        GUI class
 
-        Implements a GUI to visualize the results
+        Implements a GUI to be able to adapt parameters without going in the code and visualize the results
     """
 
     def __init__(self):
+        '''
+        Initialize all Elements for the GUI
+        '''
         self.root = tk.Tk()
         self.root.title("GUI for GPR")
 
         self.Data = None
         self.Eval = None
-        self.gpr = None
+        self.Metrics = Metrics()
+        self.Acquisition = None
+        self.GPR = None
 
         if True:
             self.time = 0
@@ -62,7 +70,8 @@ class Gui():
             self.function_individuel = None
             self.dim_individuel = None
 
-        # helpfunctions for subframe, subframe with grid and entry
+        # Helpfunctions for subframe and parameter label + entry
+
         if True:
             def create_sub_frame(parent, frame_text, fill="x", expand="yes", pad_y=2, pad_x=5):
                 frame = tk.LabelFrame(parent, text=frame_text)
@@ -78,7 +87,7 @@ class Gui():
             def create_param_entry(parent, label_text, parameter, row, column=0, pad_x=5, pad_y=5, width_label=20,
                                    width_entry=10, big_entry=False):
 
-                label = tk.Label(parent, text=label_text, width=width_label)
+                label = tk.Label(parent, text=label_text, width=width_label, anchor="w", justify='left')
                 label.grid(row=row, column=2 * column, padx=pad_x, pady=pad_y)
                 if big_entry:
                     entry = tk.Entry(parent, width=33)
@@ -97,20 +106,18 @@ class Gui():
             self.frame_hyperparam = create_sub_frame(self.frame1, "Hyperparameter")
             self.frame_datasize = create_sub_frame(self.frame1, "Dataset")
 
-            self.frame_checkbutton = create_sub_frame(self.frame3, "Aquisition Function")
-
-            #  CREATE PLOT FRAME in FRAME 2
             self.subframe_plot = create_sub_frame_grid(self.frame2, "Plot", row_=0, column_=0)
 
-            self.frame_4top = tk.Frame(self.frame4)
-            self.frame_4top.grid(row=0, column=0, padx=5, sticky="nsew")
+            self.frame_checkbutton = create_sub_frame(self.frame3, "Aquisition Function")
 
+            self.frame_4top = tk.Frame(self.frame4)
             self.frame_4down = tk.Frame(self.frame4)
+
+            self.frame_4top.grid(row=0, column=0, padx=5, sticky="nsew")
             self.frame_4down.grid(row=1, column=0, padx=5, sticky="nsew")
 
             self.frame_individual_function = create_sub_frame_grid(self.frame_4top, "Individual Function", row_=0,
                                                                    column_=0)
-
             self.frame_example = create_sub_frame_grid(self.frame_4down, "Examples", row_=1, column_=0)
             self.frame_control = create_sub_frame_grid(self.frame_4down, "Control", row_=1, column_=1)
 
@@ -143,10 +150,12 @@ class Gui():
             self.label_param_alpha, self.param_alpha = create_param_entry(self.frame_hyperparam, " alpha", param.alpha,
                                                                           0)
 
-        #  Create ITEMS of Control Window
-        # - Repetition / Iteration Number
-        # - step and start button
-        # - time of last iteration
+        ''' 
+        Create ITEMS of Control Window
+                - Repetition / Iteration Number
+                - step and start button
+                - time of last iteration
+        '''
         if True:
             self.label_rep_nr = tk.Label(self.frame_control, text="Repetition number", width=20)
             self.label_rep_nr.grid(row=0, column=0, padx=5)
@@ -452,6 +461,15 @@ class Gui():
                                                                                       param.perio_periodicity, 9, 1,
                                                                                       width_label=10,
                                                                                       width_entry=3)
+            self.label_intercept, self.param_lin_intercept = create_param_entry(self.frame_kernel, "intercept",
+                                                                                param.lin_intercept, 10, 1,
+                                                                                width_label=10,
+                                                                                width_entry=3)
+            self.label_slope, self.param_lin_slope = create_param_entry(self.frame_kernel, "slope",
+                                                                        param.lin_slope, 11, 1,
+                                                                        width_label=10,
+                                                                        width_entry=3)
+
         # Buttons For Use of Example
         if True:
             # self.var_example = tk.IntVar(value=0)
@@ -471,7 +489,7 @@ class Gui():
             create_btn_example(func_name="Example 1.1", value=1.1, r=0)
             create_btn_example(func_name="Example 1.2", value=1.2, r=1)
             create_btn_example(func_name="Example 1.3", value=1.3, r=2)
-            create_btn_example(func_name ="Example 1.4",value = 1.4, r=8)
+            create_btn_example(func_name="Example 1.4", value=1.4, r=8)
 
             create_btn_example(func_name="Example 2.1", value=2.1, r=3)
             create_btn_example(func_name="Example 3.1", value=3.1, r=4)
@@ -490,7 +508,7 @@ class Gui():
             self.state_frame.grid(row=3, column=3, sticky="W", padx=2, pady=0)
 
             self.btn_load_param = tk.Button(self.frame_example, text='Load Parameter', bg="#c0c0c0",
-                                            command=self.load_params) # load params for example
+                                            command=self.load_params)  # load params for example
             self.btn_load_param.grid(row=0, column=3, padx=2, pady=0)
 
             self.btn_create_gpr_model = tk.Button(self.frame_example, text='Create GPR model', bg="#c0c0c0",
@@ -528,10 +546,12 @@ class Gui():
                                             command=show_true_function)
             self.btn_load_param.grid(row=5, column=3, padx=2, pady=0)
 
+    # create the plot windows
     def plot(self):
 
         self.gui_plt.cla()
         self.gui_plt.plot_size = (5, 3)
+        self.gui_plt.tick_params(top=False, right=False)
         # self.gui_plt.set_title("")
         self.gui_plt.set_xlabel("Iterations")
         self.gui_plt.set_ylabel("R2-score")
@@ -542,12 +562,14 @@ class Gui():
 
     def plot_(self):
         self.gui_plt_.cla()
-        #self.gui_plt_.plot_size = (5, 3)
+        # self.gui_plt_.plot_size = (5, 3)
         # self.gui_plt_.set_title("")
         self.gui_plt_.set_xlabel("Iterations")
         self.gui_plt_.set_ylabel("RSME-Score")
+        self.gui_plt_.tick_params(top=False, right=False)
         self.canvas_figure_.draw()
 
+    # plot the scores
     def add_plot_r2(self):
         if self.Data.iteration == param.iterations + 1 and self.Data.repetition == param.repetitions:
             x = np.arange(self.Data.iteration)
@@ -578,7 +600,7 @@ class Gui():
         return None
 
     def add_plot_rsme(self):
-        #if self.gpr.iter_nr == param.iterations+1 and self.gpr.rep_nr == param.repetitions:
+        # if self.gpr.iter_nr == param.iterations+1 and self.gpr.rep_nr == param.repetitions:
         if self.Data.iteration == param.iterations + 1 and self.Data.repetition == param.repetitions:
             x = np.arange(self.Data.iteration)
 
@@ -605,6 +627,7 @@ class Gui():
         self.canvas_figure_.draw()
         return None
 
+    # load parameters in the entries
     def load_params(self):
         def delete_params():
             widgets_to_clear = (self.param_function, self.param_dim, self.param_SSN, self.param_iterations,
@@ -627,7 +650,7 @@ class Gui():
             param.example_txt, param.kernel, param.function, param.SSN, param.dim, param.iterations, param.repetitions, \
             param.init_data_size, param.test_data_size, param.alpha = param.get_params(self.var_example.get())
 
-            param.rbf_lengthscale, param.rbf_variance, param.perio_lengthscale, param.perio_periodicity \
+            param.rbf_lengthscale, param.rbf_variance, param.perio_lengthscale, param.perio_periodicity, param.lin_slope, param.lin_intercept \
                 = param.init_kernel_params()
 
             if True:
@@ -651,6 +674,7 @@ class Gui():
         self.label_state.config(text="Parameter loaded")  # Let User Parameter loaded
         return None
 
+    # set the params
     def set_params(self, event=None):
         def get_individual_function():
             func_str = self.param_individual_function.get()
@@ -699,111 +723,137 @@ class Gui():
         param.perio_lengthscale = float(self.param_perio_lengthscale.get())
         param.perio_periodicity = float(self.param_perio_periodicity.get())
 
+    # update control window
     def set_control_values(self):
         self.label_iter_nr_value.config(text="{}/{}".format(0, param.iterations))
         self.label_rep_nr_value.config(text="{}/{}".format(0, param.repetitions))
         self.iter_time_value.config(text="0:00:0.000")
 
-    # TODO: GIRD / RANDOM / SELBST ERMÖGLICHEN
+    def set_control_time(self,iteration_time):
+        td = datetime.timedelta(seconds=iteration_time)
+        print(td)
+        try:
+            hmsm = str(td).split('.')[0] + '.' + str(td).split('.')[1][:3]
+        except IndexError:
+            hmsm = "0.000"
+        self.iter_time_value.config(text="{}".format(hmsm))  # configure the time value
+        print("Iteration Finished - Time: {}".format(hmsm))
+
+    # Create initial data and create Data Object
     def create_init_data(self):
         start, stop, num = param.SSN
         X_init = np.random.uniform(start, stop, (param.init_data_size, param.dim))
         Y_init = param.function(X_init)
         self.Data = Data(X_init, Y_init)
 
+    # get y value for x
     def get_y_new(self, x):
         return param.function(x)
 
-    def create_test_data(self): #TODO: muss in EVAL REIN
-        indices = np.random.choice(self.gpr.fstar.size, size=param.test_data_size, replace=False)
-        if param.dim == 1:  # DIM 1
-            y_true = np.array([param.function(i) for i in self.gpr.Xstar[indices]])[:,
-                     0]  # respect double array structure
-        else:
-            y_true = param.function(self.gpr.Xstar[indices])
-        self.Data.X_test = self.gpr.Xstar[indices]
-        self.Data.Y_test_true = y_true
-        #self.Data.test_data_indices = indices
-        return indices
-
-    def new_init_data(self):
-        start, stop, num = param.SSN
-        X_init_new = np.random.uniform(start, stop, (param.init_data_size, param.dim))
-        Y_init_new = param.function(X_init_new)
-        return X_init_new, Y_init_new
-
+    # reset the scores and initialize new data
     def prepare_data_for_new_repetition(self):
         self.Data.reset_scores()  # reset the score and new datapoints
-        X_init_new, Y_init_new = self.new_init_data()  # here create new Initial Dataparam.example_txt
+        X_init_new, Y_init_new = self.Data.new_init_data(param.SSN, param.init_data_size, param.dim,
+                                                         param.function)  # here create new Initial Dataparam.example_txt
         self.Data.reset_init_data(X_init_new, Y_init_new)  # reset the Dataset in Data for new repetition
-        self.gpr.reset_init_data(X_init_new, Y_init_new)  # reset the Dataset in GPR for new repetition
+        self.GPR.reset_init_data(X_init_new, Y_init_new)  # reset the Dataset in GPR for new repetition
 
-    # TODO: ermöglichen ei, gf zu wählen
-    def create_eval(self):
-        self.Eval = Eval(ei=True, gf=True, normalize=True, alpha=param.alpha)
+    # set the type of acquisition function and create object
+    def init_acquisition_func(self):
+        if self.var_aquisition_fct.get() == 1:
+            ei_term, gf_term = True, True
+        if self.var_aquisition_fct.get() == 0:
+            ei_term, gf_term = True, False
+
+        self.Acquisition = Acquisition(ei=ei_term, gf=gf_term, normalize=self.var_aquisition_fct_normalize,
+                                       alpha=param.alpha)
 
     def create_gpr_model(self):
+        '''
+        create gpr model and preparation for start:
+
+                - Use all data from GUI
+                - set the control window
+                - create initial data
+                - create acquisition object
+                - create gpr Object
+
+        '''
         self.set_params()  # If User change the values -> set the parameters for the GPR MODEL
         self.set_control_values()
-
         self.create_init_data()  # DATA MODEL # Data is generated
-        self.create_eval()  # Eval Model # Eval is generated
+        self.init_acquisition_func()  # Eval Model # Eval is generated
 
-        self.gpr = GaussianProcessRegressor(param.get_kernel(self.var_kernel_button.get(), ), param.function, param.dim,
+        self.GPR = GaussianProcessRegressor(param.get_kernel(self.var_kernel_button.get()), param.function, param.dim,
                                             self.Data.X_init, self.Data.Y_init, param.SSN)
-
+        self.is_running = True # if stop was pressed, change the value back to True
         self.label_state.config(text="Model is ready")
         return None
 
+    # stop the gpr model
     def stop(self):
         self.is_running = False
         self.label_state.config(text="STOPPED")
         return None
 
     def start_gpr_threading(self):
+        ''' usage of threading -> GUI dont freeze'''
         self.is_running = True
         self.label_state.config(text="GPR startet")
         # create thread -> tkinter window does not freeze
         self.start_gpr_thread = threading.Thread(target=self.start_gpr)
         self.start_gpr_thread.start()
 
-    def start_gpr(self):  # Start the calculation on a separate thread
+    # start gpr, do step_gpr until finish
+    def start_gpr(self):
         self.is_running = True
-        while self.step_gpr(stepwise=0) == 0 and self.is_running == True:
+        while self.step_gpr() == 0 and self.is_running == True:
             continue
 
-    def step_gpr(self, stepwise=0):
-        # Start the calculation on a separate thread
-        print(self.Data.iteration,self.Data.repetition)
-        if not stepwise and self.Data.iteration <= param.iterations+1 and self.Data.repetition <= param.repetitions:
+    def step_gpr(self):
+        """
+            Perform a single step of Gaussian Process Regression (GPR).
 
-            if self.Data.iteration == param.iterations+1 and self.Data.repetition == param.repetitions:
-                self.Data.save_scores__()  # before finish - save results
+            Returns:
+                int: Return code indicating the status of GPR.
 
-                r2__average, rsme__average = self.Eval.calculate_average_scores(self.Data.r2_score__,
-                                                                                self.Data.rsme_score__)
+            """
+        if self.is_running and self.Data.iteration <= param.iterations + 1 and self.Data.repetition <= param.repetitions:
+            # Check if GPR is finished
+            if self.Data.iteration == param.iterations + 1 and self.Data.repetition == param.repetitions:
+                # Save final scores and average scores
+                self.Data.save_scores__()
+
+                r2__average, rsme__average = self.Metrics.calculate_average_scores(self.Data.r2_score__,
+                                                                                   self.Data.rsme_score__)
                 self.Data.save_average_scores(r2__average, rsme__average)
 
                 self.Data.save_data_from_repetition()
                 self.label_state.config(text="GPR FINISHED")
+
+                # used to plot finished result - can be deleted
                 if param.dim == 2:
                     plt.figure()
-                    plt.imshow(self.Data.fstar_[-1].reshape(self.gpr.grids[0].shape), origin='lower', extent=[param.SSN[0],
-                                                                                                          param.SSN[1],
-                                                                                                          param.SSN[0],
-                                                                                                          param.SSN[1]],
+                    plt.imshow(self.Data.fstar_[-1].reshape(self.GPR.grids[0].shape), origin='lower',
+                               extent=[param.SSN[0],
+                                       param.SSN[1],
+                                       param.SSN[0],
+                                       param.SSN[1]],
                                cmap='coolwarm')
                     plt.scatter(self.Data.X_obs[:, 0], self.Data.X_obs[:, 1], c=self.Data.Y_obs, cmap='coolwarm',
                                 edgecolors='black',
                                 linewidths=1)
 
                 return 1
-            elif self.Data.iteration == param.iterations+1 and self.Data.repetition <= param.repetitions:
+
+            elif self.Data.iteration == param.iterations + 1 and self.Data.repetition <= param.repetitions:
+                # Move to the next repetition
                 self.Data.iteration = 0
                 self.Data.repetition += 1
 
+                # Save data of repetition and prepare for next repetition
                 self.Data.save_data_from_repetition()
-                self.Data.save_scores__()  # before next repetition - save results
+                self.Data.save_scores__()
                 self.prepare_data_for_new_repetition()
 
             print("Start: Iteration {}/".format(self.Data.iteration), param.iterations,
@@ -812,43 +862,45 @@ class Gui():
             self.label_iter_nr_value.config(text="{}/{}".format(self.Data.iteration, param.iterations))
             self.label_rep_nr_value.config(text="{}/{}".format(self.Data.repetition, param.repetitions))
 
-            start_time = time.time()  # start timer for GPR
+            start_time = time.time()          # Start timer for GPR
 
-            fstar_i, Sstar_i = self.gpr.gp()  # do GPR
-            # Create test dataset
+            fstar_i, Sstar_i = self.GPR.gp()  # Perform GPR
+
+            # Create Test Data
             if self.Data.iteration == 0 and self.Data.repetition == 1:
-                global indices_for_test_data # global so it can used any iteration / repetition
-                indices_for_test_data = self.create_test_data()
+                global indices_of_test_data  # global so it can used any iteration / repetition
+                indices_of_test_data = self.Data.create_test_data(test_data_size=param.test_data_size, dim=param.dim,
+                                                                  function=param.function, Xstar=self.GPR.Xstar)
 
-            aquisition_func = self.Eval.get_aquisition_function(self.gpr.Xstar, fstar_i, x_obs=self.gpr.X_observed,
-                                                                y_obs=self.gpr.Y_observed, Sstar=Sstar_i,
-                                                                shape_like=self.gpr.grids[0].shape)  # GET Aquisition Function
+            # Calculate aquisition Function for iteration
+            aquisition_func = self.Acquisition.get_acquisition_function(self.GPR.Xstar, fstar_i,
+                                                                        x_obs=self.GPR.X_observed,
+                                                                        y_obs=self.GPR.Y_observed, Sstar=Sstar_i,
+                                                                        shape_like=self.GPR.grids[
+                                                                            0].shape)
 
-            x_new = self.Eval.get_new_x_for_eigf(aquisition_func, self.gpr.Xstar)  # Calculate x_new
+            # Calculate x_new and the function value of it
+            x_new = self.Acquisition.get_new_x_for_eigf(aquisition_func, self.GPR.Xstar)
             y_new = self.get_y_new(x_new)
 
-            y_pred = fstar_i.flatten()[indices_for_test_data]  # prediction
-            rsme_i, r2_i = self.Eval.get_rsme_r2_scores(y_pred, self.Data.Y_test_true)  # calculate the scores
+            # y_pred = self.gpr.get_predicted_value_for_x_test_indices(indices_of_test_data)
+            y_pred = fstar_i.flatten()[indices_of_test_data]  # prediction
 
-            # For Time
+            # Calculate RSME and R2 score
+            rsme_i, r2_i = self.Metrics.get_rsme_r2_scores(y_pred, self.Data.Y_test)
+
+            # Calculate the computational time and set it for control window
             if True:
                 iteration_time = time.time() - start_time  # calculate the time needed for iteration
-                td = datetime.timedelta(seconds=iteration_time)
-                print(td)
-                try:
-                    hmsm = str(td).split('.')[0] + '.' + str(td).split('.')[1][:3]
-                except IndexError:
-                    hmsm = "0.000"
-                self.iter_time_value.config(text="{}".format(hmsm))  # configure the time value
+                self.set_control_time(iteration_time)
 
-            print("Iteration Finished - Time: {}".format(hmsm))
-
+            # Plots for each iteration -- can be deleted --
             def plot_2dim_fstar():
                 plt.figure()
-                plt.imshow(fstar_i.reshape(self.gpr.grids[0].shape), origin='lower', extent=[param.SSN[0],
-                                                                                         param.SSN[1],
-                                                                                         param.SSN[0],
-                                                                                         param.SSN[1]],
+                plt.imshow(fstar_i.reshape(self.GPR.grids[0].shape), origin='lower', extent=[param.SSN[0],
+                                                                                             param.SSN[1],
+                                                                                             param.SSN[0],
+                                                                                             param.SSN[1]],
                            cmap='coolwarm')
                 plt.scatter(self.Data.X_obs[:, 0], self.Data.X_obs[:, 1], c=self.Data.Y_obs, cmap='coolwarm',
                             edgecolors='black',
@@ -857,48 +909,47 @@ class Gui():
 
             def plt_1dim_fstar():
                 plt.figure()
-                x = self.gpr.grids[0]
-                plt.plot(x, param.function(self.gpr.grids[0]), linestyle= "--", c= "black", linewidth= 1)
+                x = self.GPR.grids[0]
+                plt.plot(x, param.function(self.GPR.grids[0]), linestyle="--", c="black", linewidth=1)
 
-                plt.scatter(self.Data.X_init, self.Data.Y_init,c="red", s=4 )
-                plt.scatter(self.Data.X_obs[param.init_data_size:], self.Data.Y_obs[param.init_data_size:], c="black",s = 4)
+                plt.scatter(self.Data.X_init, self.Data.Y_init, c="red", s=4)
+                plt.scatter(self.Data.X_obs[param.init_data_size:], self.Data.Y_obs[param.init_data_size:], c="black",
+                            s=4)
 
-
-                plt.plot(x, fstar_i, c= "blue", linewidth ="1")
-                #plt.errorbar(x, self.Data.fstar_[-1], yerr=2 * np.diag(self.Data.Sstar_[-1]))
+                plt.plot(x, fstar_i, c="blue", linewidth="1")
+                # plt.errorbar(x, self.Data.fstar_[-1], yerr=2 * np.diag(self.Data.Sstar_[-1]))
 
                 for i, txt in enumerate(range(len(self.Data.X_obs))):
                     if i >= param.init_data_size:
-                        plt.annotate((txt + 1)-param.init_data_size, (self.Data.X_obs[i], self.Data.Y_obs[i]),xytext=(self.Data.X_obs[i] + 0.05, self.Data.Y_obs[i] + 0.05))
+                        plt.annotate((txt + 1) - param.init_data_size, (self.Data.X_obs[i], self.Data.Y_obs[i]),
+                                     xytext=(self.Data.X_obs[i] + 0.05, self.Data.Y_obs[i] + 0.05))
 
             if param.dim == 1:
                 plt_1dim_fstar()
             if param.dim == 2:
                 plot_2dim_fstar()
+            ###################################################################
 
-
-            # SAVE IN DATA
-            self.gpr.update_data(x_new, y_new)  # add the new data point to the observed data
+            # update gpr data
+            self.GPR.update_data(x_new, y_new)
+            # save results, scores of iteration, and add the new points to the observed
             self.Data.update_data_(fstar_i, Sstar_i, x_new, y_new)
             self.Data.save_scores_(rsme_i, r2_i)
-            self.Data.iteration += 1
 
-            # FOR DEBUGGING
+
+            # Calculate how the y_values of prediction change
             # if param.dim == 2 and len(self.Data.fstar_) >= 2:
             #     self.Eval.get_r2_difference_to_before(self.gpr.iter_nr, self.Data.X_obs, self.Data.X_test,
             #                                           self.Data.fstar_[-1].flatten()[self.Data.test_data_indices],
             #                                           self.Data.fstar_[-2].flatten()[self.Data.test_data_indices])
 
+            self.Data.iteration += 1
             return 0
 
         return 1
 
+    # show Gui
     def show(self):
         self.root.mainloop()
 
-    def destroy(self):
-        self.root.destroy()
 
-
-g = Gui()
-g.show()

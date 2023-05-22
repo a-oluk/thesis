@@ -1,6 +1,5 @@
 import numpy as np
 from matplotlib import pyplot as plt
-from scipy.spatial.distance import cdist
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from eval import *
@@ -14,21 +13,12 @@ class GaussianProcessRegressor:
         self.kernel = kernel
         self.function = function
 
-        #self.rep_nr = 1  # # iteration number
-        #self.iter_nr = 0  # iteration number
-
-        # Initial Data
-        #self.X_init = X_init
-        #self.Y_init = Y_init
-
         # Observed Data
         self.X_observed = X_init
         self.Y_observed = Y_init
 
         self.fstar, self.Sstar = [], []  # results in iteration
-        #self.fstar_, self.Sstar_ = [], []  # Save results from iterations in list
 
-        ################################################
         linspaces = []
         start, stop, num = SSN
         # AREA OF INTEREST
@@ -36,9 +26,6 @@ class GaussianProcessRegressor:
             linspaces.append(np.linspace(start, stop, num))
         self.grids = np.meshgrid(*linspaces)
         self.Xstar = np.vstack([grid.flatten() for grid in self.grids]).T
-
-        #self.grid_shape = self.grids[0].shape
-        #self.K = None
 
     def gp(self):
         K = self.kernel(self.X_observed, self.X_observed)
@@ -57,7 +44,7 @@ class GaussianProcessRegressor:
             return self.fstar, self.Sstar
 
         except np.linalg.LinAlgError:
-            print("Matrix is not positive definite")
+            print("Matrix inversion failed with Cholesky")
             try:
                 Kinv = np.linalg.inv(K)
                 self.fstar = np.dot(self.kernel(self.Xstar, self.X_observed), np.dot(Kinv, self.Y_observed))
@@ -70,17 +57,9 @@ class GaussianProcessRegressor:
                 return self.fstar, self.Sstar
             except np.lianlg.LinAlgError:
                 print("Matrix inversion failed")
-                return None
+                return None, None
 
-        ################################################
-
-    # keine anwendung für Abgabe
-    def reset(self, X):
-        self.X_observed = X
-        self.Y_observed = self.function(self.X_observed)
-
-
-    def reset_init_data(self,X_init_new,Y_init_new):
+    def reset_init_data(self, X_init_new, Y_init_new):
         self.X_observed = X_init_new
         self.Y_observed = Y_init_new
 
@@ -111,10 +90,8 @@ if True:
         return ei_term
 
 
-    def get_gf_term(meshgrid_vstacked, fstar, x_obs, y_obs, shape_like):
-        meshgrid_arr = meshgrid_vstacked
-
-        dist_to_nn = cdist(meshgrid_arr, x_obs, metric='euclidean')
+    def get_gf_term(X_star, fstar, x_obs, y_obs, shape_like):
+        dist_to_nn = cdist(X_star, x_obs, metric='euclidean')
         min_idx = np.argmin(dist_to_nn, axis=1)
         nn_values = y_obs[min_idx]
 
@@ -222,8 +199,8 @@ def start_gpr(kernel=rbf_kernel, function=function_2dim, SSN=(-5, 5, 100), dim=2
         for q in range(gp_iterations):
             print(gpr.iter_nr)
             print("Start Iteration Number: ", q + 1)
-            aquisition_func = eval.get_aquisition_function(gpr.Xstar, fstar_i, x_obs=gpr.X_observed, y_obs=gpr.Y_observed, Sstar=Sstar_i,
-                                                           shape_like=gpr.grids[0].shape)
+            aquisition_func = eval.get_acquisition_function(gpr.Xstar, fstar_i, x_obs=gpr.X_observed, y_obs=gpr.Y_observed, Sstar=Sstar_i,
+                                                            shape_like=gpr.grids[0].shape)
             x_new = eval.get_new_x_for_eigf(aquisition_func, gpr.Xstar)
 
             fstar_i, Sstar_i = gpr.gp()
@@ -237,7 +214,7 @@ def start_gpr(kernel=rbf_kernel, function=function_2dim, SSN=(-5, 5, 100), dim=2
             y_new = function(x_new)
             gpr.update_data(x_new,y_new)  # add the new data point to dataset
 
-            #TODO: HIER MUSS REINGEMACHT WERDEN FALLS DAS AUSGEFÜHRT WERDEN SOLL
+            #TODO: IGNORIERBAR! - HIER MUSS REINGEMACHT WERDEN FALLS DAS AUSGEFÜHRT WERDEN SOLL
             #gpr.fstar_.append(fstar_i)
             #gpr.Sstar_.append(Sstar_i)
 
@@ -304,7 +281,7 @@ def start_gpr(kernel=rbf_kernel, function=function_2dim, SSN=(-5, 5, 100), dim=2
                     plt.annotate(txt + 1, (data.X_obs[i], data.Y_obs[i]))
             if not show_plots:
                 plt.show()
-        gpr.reset(X)
+        gpr.reset_init_data(X,Y)
         data.reset()
         gpr.rep_nr += 1
 
@@ -323,7 +300,8 @@ random.seed(20)
 # gpr_2dim, evaluation = start_gpr(kernel=rbf_kernel, function=function_2dim, dim=2, N_0=10, repetition=1,gp_iterations=30, test_size=30, alpha=0.5, SSN=(-5, 5, 40))
 
 #########################################################
-# TODO: HIER SEHR SCHLECHTE ERGEBNISSE -> DA STARK VERÄNDERLICH | KERNEL PARAMETER ÄNDERN BASED ON ABSTAND VON PUNKTEN !
+# TODO: - IGNORIERBAR -
+#  HIER SEHR SCHLECHTE ERGEBNISSE -> DA STARK VERÄNDERLICH | KERNEL PARAMETER ÄNDERN BASED ON ABSTAND VON PUNKTEN !
 #  !!      BASED ON OBSERVED POINTS ABSTAND (MAX oder MIN ABSTAND) EVENTUELL
 #  !! ODER BASED --> GEHT IMMER ZU SEHR AUF NULL ZURÜCK !!!!!!!!!!!!!
 # gpr_2dimm, evaluation = start_gpr(kernel=rbf_kernel, function=function_2dimm, SSN=(-10, 10, 40), dim=2, N_0=10, repetition=1,gp_iterations=30, test_size=30, alpha=0.5)

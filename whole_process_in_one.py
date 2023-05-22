@@ -195,7 +195,7 @@ if True:
         y_pred = fstar.flatten()[indices]
         # y_true = function(Xstar[indices]) FUNKTIONIERT NICHT GUT
         if dim == 1:  # DIM 1
-            y_true = np.array([function(i) for i in Xstar[indices]])[:,0] # WEIL DOPPELTE ARRAY TODO: ALTERNATIVE
+            y_true = np.array([function(i) for i in Xstar[indices]])[:,0] # WEIL DOPPELTE ARRAY
         else:
             y_true = function(Xstar[indices])
         return y_pred, y_true

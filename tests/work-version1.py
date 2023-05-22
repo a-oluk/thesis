@@ -80,7 +80,6 @@ def plot_density_of_domain(df):
     values_of_domain.plot(kind="hist")
     values_of_domain.plot.kde()
 
-#TODO: "BEKOMME ICH HIER DIE FUNKTION RAUS ?"
 def get_values_of_domain(df):
     column_of_df = df.columns.values.tolist()
     del column_of_df[-1]  # column_of_df[:-1]
