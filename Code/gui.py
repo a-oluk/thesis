@@ -1,4 +1,4 @@
-from GPR import GaussianProcessRegressor
+from GPR import GaussProcessRegression
 from data_storage import Data
 from PerformanceAnalysis import Acquisition, Metrics
 import _params as param
@@ -35,11 +35,10 @@ class Gui():
         self.root = tk.Tk()
         self.root.title("GUI for GPR")
 
-        self.Data = None
-        self.Eval = None
-        self.Metrics = Metrics()
-        self.Acquisition = None
-        self.GPR = None
+        self.data = None
+        self.metrics = None
+        self.acquisition = None
+        self.gpr = None
 
         if True:
             self.time = 0
@@ -84,8 +83,8 @@ class Gui():
                 return frame
 
             # parameter slots
-            def create_param_entry(parent, label_text, parameter, row, column=0, pad_x=5, pad_y=5, width_label=20,
-                                   width_entry=10, big_entry=False):
+            def create_param_entry(parent, label_text, parameter, row, column=0, pad_x=5, pad_y=5, width_label=18,
+                                   width_entry=15, big_entry=False):
 
                 label = tk.Label(parent, text=label_text, width=width_label, anchor="w", justify='left')
                 label.grid(row=row, column=2 * column, padx=pad_x, pady=pad_y)
@@ -108,7 +107,7 @@ class Gui():
 
             self.subframe_plot = create_sub_frame_grid(self.frame2, "Plot", row_=0, column_=0)
 
-            self.frame_checkbutton = create_sub_frame(self.frame3, "Aquisition Function")
+            self.frame_checkbutton = create_sub_frame(self.frame3, "Dataselection")
 
             self.frame_4top = tk.Frame(self.frame4)
             self.frame_4down = tk.Frame(self.frame4)
@@ -130,7 +129,7 @@ class Gui():
                 self.frame_individual_function, " Enter Individual function here:",
                 "", 0, big_entry=True)
             self.label_symbol, self.param_symbol = create_param_entry(self.frame_individual_function, " Symbols:", "",
-                                                                      1)
+                                                                      1,big_entry=True)
             self.label_SSN, self.param_SSN = create_param_entry(self.frame_param_gpr, "start,stop,number", param.SSN, 0)
 
             self.label_iterations, self.param_iterations = create_param_entry(self.frame_param_gpr, "Iteration(s)",
@@ -183,12 +182,11 @@ class Gui():
                                       command=self.stop)
             self.btn_stop.grid(row=5, column=1, sticky="W", padx=2, pady=0)
 
-            def show_plot():
-                plt.show(block=False)
+            #def show_plot():
+            #    plt.show(block=False)
 
-            self.btn_show_plots = tk.Button(self.frame_control, text='show plots', width=15,
-                                            command=show_plot)
-            self.btn_show_plots.grid(row=6, column=1, sticky="W", padx=2, pady=0)
+            #self.btn_show_plots = tk.Button(self.frame_control, text='show plots', width=15,command=show_plot)
+            #self.btn_show_plots.grid(row=6, column=1, sticky="W", padx=2, pady=0)
 
         # create plots
         if True:
@@ -239,7 +237,6 @@ class Gui():
                 toolbar.update()
 
                 def on_key_press(event):
-                    # print("you pressed {}".format(event.key))
                     key_press_handler(event, self.canvas_figure_, toolbar)
 
                 self.canvas_figure.mpl_connect("key_press_event", on_key_press)
@@ -251,18 +248,18 @@ class Gui():
             self.frame_plt_btn = tk.Frame(self.frame2)
             self.frame_plt_btn.grid(row=1, column=0, padx=5, sticky="nw")
 
-            self.btn_plt = tk.Button(self.frame_plt_btn, text="refresh r2 plot", command=self.plot)
+            self.btn_plt = tk.Button(self.frame_plt_btn, text="refresh r2 plot", command=self.plot, height = 1, width = 14)
             self.btn_plt.grid(row=0, column=0, padx=2, pady=2, sticky="w")
-            self.btn_plt = tk.Button(self.frame_plt_btn, text="add plot r2-score", command=self.add_plot_r2)
+            self.btn_plt = tk.Button(self.frame_plt_btn, text="add plot r2-score", command=self.add_plot_r2, height = 1, width = 14)
             self.btn_plt.grid(row=1, column=0, padx=2, pady=2, sticky="w")
 
             padding_cell = tk.Label(self.frame_plt_btn, width=30)
             padding_cell.grid(row=0, column=2)
 
-            self.btn_plt = tk.Button(self.frame_plt_btn, text="refresh rsme plot", command=self.plot_)
+            self.btn_plt = tk.Button(self.frame_plt_btn, text="refresh rsme plot", command=self.plot_, height = 1, width = 14)
             self.btn_plt.grid(row=0, column=3, padx=2, pady=2, sticky="w")
 
-            self.btn_plt = tk.Button(self.frame_plt_btn, text="add plot rsme-score", command=self.add_plot_rsme)
+            self.btn_plt = tk.Button(self.frame_plt_btn, text="add plot rsme-score", command=self.add_plot_rsme, height = 1, width = 14)
             self.btn_plt.grid(row=1, column=3, padx=2, pady=2, sticky="w")
 
         # (un-)show average plot
@@ -330,7 +327,7 @@ class Gui():
                            onvalue=1,
                            offvalue=0, command=lambda: toggle_line(self.show_iterations_rsme)).grid(row=0, column=4,
                                                                                                     sticky='W')
-        # show avarage score Checkbutton
+        # show average score Checkbutton
         if True:
             self.show_average_r2_score = tk.BooleanVar(value=False)
             self.show_average_rsme_score = tk.BooleanVar(value=False)
@@ -345,10 +342,17 @@ class Gui():
                            onvalue=1,
                            offvalue=0, command=lambda: toggle_line(self.show_average_rsme_score)).grid(row=1, column=4,
                                                                                                        sticky='W')
-        # show legend checkbutton
+        # show legend checkbutton + log-scale for rsme-plot checkbutton
         if True:
             self.var_legend = tk.BooleanVar(value=True)
             self.var_legend_ = tk.BooleanVar(value=True)
+            self.var_log_scale_ = tk.BooleanVar(value=False)
+            def scale_plot_(var):
+                if var.get():
+                    self.gui_plt_.set_yscale("log")
+                else:
+                    self.gui_plt_.set_yscale("linear")
+                self.canvas_figure_.draw()
 
             def show_hide_legend_(var):
                 if var.get():
@@ -377,6 +381,12 @@ class Gui():
                            offvalue=0, variable=self.var_legend_,
                            command=lambda: show_hide_legend_(self.var_legend_)).grid(
                 row=0, column=5, sticky='W')
+            tk.Checkbutton(self.frame_plt_btn, text="logarithmic y-axis?", onvalue=1,
+                           offvalue=0, variable=self.var_log_scale_,
+                           command=lambda: scale_plot_(self.var_log_scale_)).grid(
+                row=0, column=6, sticky='W')
+
+
         # Individual BLOCK
         if True:
             def convert_function():
@@ -407,7 +417,7 @@ class Gui():
             self.func_button.grid(row=0, column=2, padx=5, pady=5)
 
             tk.Label(self.frame_individual_function, text="Function:").grid(row=0, column=3, padx=5, pady=5)
-            self.function_str = tk.Label(self.frame_individual_function, text="type function and convert")
+            self.function_str = tk.Label(self.frame_individual_function, text="type function and convert", width=25)
             self.function_str.grid(row=0, column=4, padx=5, pady=5, rowspan=2, columnspan=3, sticky="nw")
 
         # Buttons For Use of Aquisition Function
@@ -417,13 +427,17 @@ class Gui():
             self.var_aquisition_fct = tk.IntVar(value=1)  # standard is expected improvement
             self.var_aquisition_fct_normalize = tk.IntVar(value=1)  # standart is to normalize
 
-            tk.Radiobutton(self.frame_checkbutton, text="Expected Improvement",
+            tk.Radiobutton(self.frame_checkbutton, text="Random",
                            variable=self.var_aquisition_fct,
-                           value=0).grid(row=1, column=0, sticky='W')
+                           value=2).grid(row=1, column=0, sticky='W')
+
+            tk.Radiobutton(self.frame_checkbutton, text="Variance based ",
+                           variable=self.var_aquisition_fct,
+                           value=0).grid(row=2, column=0, sticky='W')
             tk.Radiobutton(self.frame_checkbutton, text="Expected Improvement for Global Fit",
                            variable=self.var_aquisition_fct,
-                           value=1).grid(row=2, column=0, sticky='W')
-            tk.Label(self.frame_checkbutton, text="").grid(row=3, column=0)
+                           value=1).grid(row=3, column=0, sticky='W')
+            #tk.Label(self.frame_checkbutton, text="").grid(row=3, column=0)
             tk.Checkbutton(self.frame_checkbutton, text="Normalize",
                            variable=self.var_aquisition_fct_normalize,
                            onvalue=1,
@@ -475,49 +489,57 @@ class Gui():
             # self.var_example = tk.IntVar(value=0)
             self.var_example = tk.DoubleVar(value=1.1)
 
-            tk.Label(self.frame_example, text="One Dimensional", font=font_txt).grid(row=0, column=0, sticky='w')
-            tk.Label(self.frame_example, text="Two Dimensional", font=font_txt).grid(row=3, column=0, sticky='w')
-            tk.Label(self.frame_example, text="Three Dimensional", font=font_txt).grid(row=4, column=0, sticky='w')
-            tk.Label(self.frame_example, text="Four Dimensional", font=font_txt).grid(row=5, column=0, sticky='w')
-            tk.Label(self.frame_example, text="Individual Function", font=font_txt).grid(row=7, column=0, sticky='w')
+            tk.Label(self.frame_example, text="One Dimensional").grid(row=0, column=0, sticky='w')
+            tk.Label(self.frame_example, text="Two Dimensional").grid(row=2, column=0, sticky='w')
+            tk.Label(self.frame_example, text="Three Dimensional").grid(row=4, column=0, sticky='w')
+            tk.Label(self.frame_example, text="Four Dimensional").grid(row=5, column=0, sticky='w')
+            tk.Label(self.frame_example, text="Individual Function").grid(row=7, column=0, sticky='w')
 
             def create_btn_example(func_name, value, r, c=1):
                 tk.Radiobutton(self.frame_example, text=func_name,
                                variable=self.var_example,
                                value=value).grid(row=r, column=c, sticky="W")
 
-            create_btn_example(func_name="Example 1.1", value=1.1, r=0)
-            create_btn_example(func_name="Example 1.2", value=1.2, r=1)
-            create_btn_example(func_name="Example 1.3", value=1.3, r=2)
-            create_btn_example(func_name="Example 1.4", value=1.4, r=8)
+            create_btn_example(func_name="f₁(x)", value=1.1, r=0)
+            create_btn_example(func_name="f₂(x)", value=1.2, r=0,c=2)
+            create_btn_example(func_name="f₃(x)", value=1.3, r=1)
+            create_btn_example(func_name="f₄(x)", value=1.4, r=1,c=2)
 
-            create_btn_example(func_name="Example 2.1", value=2.1, r=3)
-            create_btn_example(func_name="Example 3.1", value=3.1, r=4)
+            create_btn_example(func_name="g₁(x₁,x₂)", value=2.1, r=2)
+            create_btn_example(func_name="g₂(x₁,x₂)", value=2.2, r=2,c=2)
+            create_btn_example(func_name="g₃(x₁,x₂)", value=2.3, r=3)
+            create_btn_example(func_name="g₄(x₁,x₂)", value=2.4, r=3,c=2)
 
-            create_btn_example(func_name="Example 4.1", value=4.1, r=5)
-            create_btn_example(func_name="Type function into entry and convert", value=999, r=7)
+            create_btn_example(func_name="h(x₁,x₂,x₃)", value=3.1, r=4)
+
+            create_btn_example(func_name="l(x₁,x₂,x₃,x₄)", value=4.1, r=5)
+
+            tk.Radiobutton(self.frame_example, text="Type function into \nentry and convert",
+                           variable=self.var_example,
+                           value=999).grid(row=7, column=1, sticky="W")
+            #create_btn_example(func_name="Type function into entry and convert", value=999, r=7)
 
             # Create a blank row with Separator widget
-            sep = ttk.Separator(self.frame_example, orient="horizontal")
-            sep.grid(row=6, column=0, columnspan=2, padx=10, pady=10, sticky="ew")
+            #sep = ttk.Separator(self.frame_example, orient="horizontal")
+            #sep.grid(row=6, column=0, columnspan=2, padx=10, pady=10, sticky="ew")
 
-            tk.Label(self.frame_example, text="", width=10).grid(row=0, column=2)
-            tk.Label(self.frame_example, text="", width=10).grid(row=1, column=2)
+            #tk.Label(self.frame_example, text="", width=10).grid(row=0, column=2)
+            #tk.Label(self.frame_example, text="", width=10).grid(row=1, column=2)
 
             self.state_frame = tk.LabelFrame(self.frame_example, text="", bg="#c0c0c0")
             self.state_frame.grid(row=3, column=3, sticky="W", padx=2, pady=0)
 
-            self.btn_load_param = tk.Button(self.frame_example, text='Load Parameter', bg="#c0c0c0",
-                                            command=self.load_params)  # load params for example
+            self.btn_load_param = tk.Button(self.frame_example, text='Load Parameter',
+                                            command=self.load_params, height = 1, width = 14)  # load params for example
             self.btn_load_param.grid(row=0, column=3, padx=2, pady=0)
 
-            self.btn_create_gpr_model = tk.Button(self.frame_example, text='Create GPR model', bg="#c0c0c0",
-                                                  command=self.create_gpr_model)
+            self.btn_create_gpr_model = tk.Button(self.frame_example, text='Create GPR model',
+                                                  command=self.create_gpr_model, height = 1, width = 14)
             self.btn_create_gpr_model.grid(row=1, column=3, padx=2, pady=0)
 
-            tk.Label(self.frame_example, text="").grid(row=2, column=2)
+            #tk.Label(self.frame_example, text="").grid(row=2, column=2)
 
-            self.label_state = tk.Label(self.state_frame, text="", bg="#c0c0c0", width=13)
+            self.label_state = tk.Label(self.state_frame, text="", bg="#c0c0c0", width=14)
             self.label_state.grid(row=0, column=0, sticky="W", padx=2, pady=0)
 
             def show_true_function():
@@ -542,9 +564,8 @@ class Gui():
 
                 plt.show(block=False)
 
-            self.btn_load_param = tk.Button(self.frame_example, text='Show True Function', bg="#c0c0c0",
-                                            command=show_true_function)
-            self.btn_load_param.grid(row=5, column=3, padx=2, pady=0)
+            #self.btn_load_param = tk.Button(self.frame_example, text='Show True Function', bg="#c0c0c0",command=show_true_function)
+            #self.btn_load_param.grid(row=5, column=3, padx=2, pady=0)
 
     # create the plot windows
     def plot(self):
@@ -571,11 +592,12 @@ class Gui():
 
     # plot the scores
     def add_plot_r2(self):
-        if self.Data.iteration == param.iterations + 1 and self.Data.repetition == param.repetitions:
-            x = np.arange(self.Data.iteration)
+        if self.data.iteration == param.iterations + 1 and self.data.repetition == param.repetitions:
+            x = np.arange(self.data.iteration)
+
             self.r2_iter_lines = []
-            for i in np.arange(np.array(self.Data.r2_score__).shape[0]):
-                y = np.array(self.Data.r2_score__[i])
+            for i in np.arange(np.array(self.data.r2_score__).shape[0]):
+                y = np.array(self.data.r2_score__[i])
                 y[y < 0] = 0
                 line, = self.gui_plt.plot(x, y, color=plt.cm.Blues(0.4 + (i / param.repetitions) * 0.4),
                                           label='Repetition {}'.format(i + 1))
@@ -586,7 +608,7 @@ class Gui():
                 for line in self.r2_iter_lines:
                     line.set_visible(False)
 
-            self.average_r2_line, = self.gui_plt.plot(x, self.Data.r2_score__average, label='average')
+            self.average_r2_line, = self.gui_plt.plot(x, self.data.r2_score__average, label='average')
 
             if not self.show_average_r2_score.get():
                 self.average_r2_line.set_visible(False)
@@ -594,19 +616,18 @@ class Gui():
             self.visible_lines_r2 = [line for line in self.gui_plt.lines if line.get_visible()]
 
             self.gui_plt.legend(self.visible_lines_r2, [line.get_label() for line in self.visible_lines_r2])
-
         self.gui_plt.xaxis.set_major_locator(MaxNLocator(integer=True))
         self.canvas_figure.draw()
         return None
 
     def add_plot_rsme(self):
         # if self.gpr.iter_nr == param.iterations+1 and self.gpr.rep_nr == param.repetitions:
-        if self.Data.iteration == param.iterations + 1 and self.Data.repetition == param.repetitions:
-            x = np.arange(self.Data.iteration)
+        if self.data.iteration == param.iterations + 1 and self.data.repetition == param.repetitions:
+            x = np.arange(self.data.iteration)
 
             self.rsme_iter_lines = []
-            for i in np.arange(np.array(self.Data.rsme_score__).shape[0]):
-                y = np.array(self.Data.rsme_score__[i])
+            for i in np.arange(np.array(self.data.rsme_score__).shape[0]):
+                y = np.array(self.data.rsme_score__[i])
                 y[y < 0] = 0
                 line, = self.gui_plt_.plot(x, y, color=plt.cm.Blues(0.4 + (i / param.repetitions) * 0.4),
                                            label='Repetition {}'.format(i + 1))
@@ -616,7 +637,7 @@ class Gui():
                 for line in self.rsme_iter_lines:
                     line.set_visible(False)
 
-            self.average_rsme_line, = self.gui_plt_.plot(x, self.Data.rsme_score__average, label='average')
+            self.average_rsme_line, = self.gui_plt_.plot(x, self.data.rsme_score__average, label='average')
 
             if not self.show_average_rsme_score.get():
                 self.average_rsme_line.set_visible(False)
@@ -703,6 +724,7 @@ class Gui():
             else:
                 param.function, param.dim = self.function_individuel, self.dim_individuel
         else:
+            print(self.param_function.get())
             param.function, param.dim = param.get_function(self.param_function.get())
 
         # GPR
@@ -729,9 +751,8 @@ class Gui():
         self.label_rep_nr_value.config(text="{}/{}".format(0, param.repetitions))
         self.iter_time_value.config(text="0:00:0.000")
 
-    def set_control_time(self,iteration_time):
+    def set_control_time(self, iteration_time):
         td = datetime.timedelta(seconds=iteration_time)
-        print(td)
         try:
             hmsm = str(td).split('.')[0] + '.' + str(td).split('.')[1][:3]
         except IndexError:
@@ -744,7 +765,7 @@ class Gui():
         start, stop, num = param.SSN
         X_init = np.random.uniform(start, stop, (param.init_data_size, param.dim))
         Y_init = param.function(X_init)
-        self.Data = Data(X_init, Y_init)
+        self.data = Data(X_init, Y_init)
 
     # get y value for x
     def get_y_new(self, x):
@@ -752,11 +773,11 @@ class Gui():
 
     # reset the scores and initialize new data
     def prepare_data_for_new_repetition(self):
-        self.Data.reset_scores()  # reset the score and new datapoints
-        X_init_new, Y_init_new = self.Data.new_init_data(param.SSN, param.init_data_size, param.dim,
+        self.data.reset_scores()  # reset the score and new datapoints
+        X_init_new, Y_init_new = self.data.new_init_data(param.SSN, param.init_data_size, param.dim,
                                                          param.function)  # here create new Initial Dataparam.example_txt
-        self.Data.reset_init_data(X_init_new, Y_init_new)  # reset the Dataset in Data for new repetition
-        self.GPR.reset_init_data(X_init_new, Y_init_new)  # reset the Dataset in GPR for new repetition
+        self.data.reset_init_data(X_init_new, Y_init_new)  # reset the Dataset in Data for new repetition
+        self.gpr.reset_init_data(X_init_new, Y_init_new)  # reset the Dataset in GPR for new repetition
 
     # set the type of acquisition function and create object
     def init_acquisition_func(self):
@@ -764,8 +785,10 @@ class Gui():
             ei_term, gf_term = True, True
         if self.var_aquisition_fct.get() == 0:
             ei_term, gf_term = True, False
+        if self.var_aquisition_fct.get() == 2:
+            ei_term, gf_term = False, False
 
-        self.Acquisition = Acquisition(ei=ei_term, gf=gf_term, normalize=self.var_aquisition_fct_normalize,
+        self.acquisition = Acquisition(ei=ei_term, gf=gf_term, normalize=self.var_aquisition_fct_normalize,
                                        alpha=param.alpha)
 
     def create_gpr_model(self):
@@ -777,16 +800,19 @@ class Gui():
                 - create initial data
                 - create acquisition object
                 - create gpr Object
+                - create metric Object
 
         '''
         self.set_params()  # If User change the values -> set the parameters for the GPR MODEL
         self.set_control_values()
-        self.create_init_data()  # DATA MODEL # Data is generated
-        self.init_acquisition_func()  # Eval Model # Eval is generated
+        self.create_init_data()  # Data is generated
+        self.init_acquisition_func()  # Eval is generated
 
-        self.GPR = GaussianProcessRegressor(param.get_kernel(self.var_kernel_button.get()), param.function, param.dim,
-                                            self.Data.X_init, self.Data.Y_init, param.SSN)
-        self.is_running = True # if stop was pressed, change the value back to True
+        self.gpr = GaussProcessRegression(param.get_kernel(self.var_kernel_button.get()), param.function, param.dim,
+                                          self.data.X_init, self.data.Y_init, param.SSN)
+        self.metrics = Metrics()  # Metric is generated
+
+        self.is_running = True  # if stop was pressed, change the value back to True
         self.label_state.config(text="Model is ready")
         return None
 
@@ -818,76 +844,79 @@ class Gui():
                 int: Return code indicating the status of GPR.
 
             """
-        if self.is_running and self.Data.iteration <= param.iterations + 1 and self.Data.repetition <= param.repetitions:
+        if self.is_running and self.data.iteration <= param.iterations + 1 and self.data.repetition <= param.repetitions:
             # Check if GPR is finished
-            if self.Data.iteration == param.iterations + 1 and self.Data.repetition == param.repetitions:
+            if self.data.iteration == param.iterations + 1 and self.data.repetition == param.repetitions:
                 # Save final scores and average scores
-                self.Data.save_scores__()
+                self.data.save_scores__()
 
-                r2__average, rsme__average = self.Metrics.calculate_average_scores(self.Data.r2_score__,
-                                                                                   self.Data.rsme_score__)
-                self.Data.save_average_scores(r2__average, rsme__average)
+                r2__average, rsme__average = self.metrics.calculate_average_scores(self.data.r2_score__,
+                                                                                   self.data.rsme_score__)
+                self.data.save_average_scores__(r2__average, rsme__average)
 
-                self.Data.save_data_from_repetition()
+                self.data.save_data__()
                 self.label_state.config(text="GPR FINISHED")
 
                 # used to plot finished result - can be deleted
                 if param.dim == 2:
                     plt.figure()
-                    plt.imshow(self.Data.fstar_[-1].reshape(self.GPR.grids[0].shape), origin='lower',
+                    plt.imshow(self.data.fstar_[-1].reshape(self.gpr.grids[0].shape), origin='lower',
                                extent=[param.SSN[0],
                                        param.SSN[1],
                                        param.SSN[0],
                                        param.SSN[1]],
                                cmap='coolwarm')
-                    plt.scatter(self.Data.X_obs[:, 0], self.Data.X_obs[:, 1], c=self.Data.Y_obs, cmap='coolwarm',
+                    plt.scatter(self.data.X_obs[:, 0], self.data.X_obs[:, 1], c=self.data.Y_obs, cmap='coolwarm',
                                 edgecolors='black',
                                 linewidths=1)
 
                 return 1
 
-            elif self.Data.iteration == param.iterations + 1 and self.Data.repetition <= param.repetitions:
+            elif self.data.iteration == param.iterations + 1 and self.data.repetition <= param.repetitions:
                 # Move to the next repetition
-                self.Data.iteration = 0
-                self.Data.repetition += 1
+                self.data.iteration = 0
+                self.data.repetition += 1
 
                 # Save data of repetition and prepare for next repetition
-                self.Data.save_data_from_repetition()
-                self.Data.save_scores__()
+                self.data.save_data__()
+                self.data.save_scores__()
                 self.prepare_data_for_new_repetition()
 
-            print("Start: Iteration {}/".format(self.Data.iteration), param.iterations,
-                  "Repetition {}/".format(self.Data.repetition), param.repetitions)
+            print("Start: Iteration {}/".format(self.data.iteration), param.iterations,
+                  "Repetition {}/".format(self.data.repetition), param.repetitions)
 
-            self.label_iter_nr_value.config(text="{}/{}".format(self.Data.iteration, param.iterations))
-            self.label_rep_nr_value.config(text="{}/{}".format(self.Data.repetition, param.repetitions))
+            self.label_iter_nr_value.config(text="{}/{}".format(self.data.iteration, param.iterations))
+            self.label_rep_nr_value.config(text="{}/{}".format(self.data.repetition, param.repetitions))
 
-            start_time = time.time()          # Start timer for GPR
+            start_time = time.time()  # Start timer for GPR
 
-            fstar_i, Sstar_i = self.GPR.gp()  # Perform GPR
+            fstar_i, Sstar_i = self.gpr.gp()  # Perform GPR
 
             # Create Test Data
-            if self.Data.iteration == 0 and self.Data.repetition == 1:
+            if self.data.iteration == 0 and self.data.repetition == 1:
                 global indices_of_test_data  # global so it can used any iteration / repetition
-                indices_of_test_data = self.Data.create_test_data(test_data_size=param.test_data_size, dim=param.dim,
-                                                                  function=param.function, Xstar=self.GPR.Xstar)
+                indices_of_test_data = self.data.create_test_data(test_data_size=param.test_data_size, dim=param.dim,
+                                                                  function=param.function, Xstar=self.gpr.Xstar)
 
             # Calculate aquisition Function for iteration
-            aquisition_func = self.Acquisition.get_acquisition_function(self.GPR.Xstar, fstar_i,
-                                                                        x_obs=self.GPR.X_observed,
-                                                                        y_obs=self.GPR.Y_observed, Sstar=Sstar_i,
-                                                                        shape_like=self.GPR.grids[
+            aquisition_func = self.acquisition.get_acquisition_function(self.gpr.Xstar, fstar_i,
+                                                                        x_obs=self.gpr.X_observed,
+                                                                        y_obs=self.gpr.Y_observed, Sstar=Sstar_i,
+                                                                        shape_like=self.gpr.grids[
                                                                             0].shape)
 
             # Calculate x_new and the function value of it
-            x_new = self.Acquisition.get_new_x_for_eigf(aquisition_func, self.GPR.Xstar)
+            x_new = self.acquisition.get_new_x(aquisition_func, self.gpr.Xstar)
+            if x_new is None:
+                x_new = np.array(np.random.uniform(param.SSN[0], param.SSN[1], (1, param.dim)))
+
             y_new = self.get_y_new(x_new)
 
             # y_pred = self.gpr.get_predicted_value_for_x_test_indices(indices_of_test_data)
             y_pred = fstar_i.flatten()[indices_of_test_data]  # prediction
 
             # Calculate RSME and R2 score
-            rsme_i, r2_i = self.Metrics.get_rsme_r2_scores(y_pred, self.Data.Y_test)
+            rsme_i, r2_i = self.metrics.get_rsme_r2_scores(y_pred, self.data.Y_test)
 
             # Calculate the computational time and set it for control window
             if True:
@@ -897,53 +926,45 @@ class Gui():
             # Plots for each iteration -- can be deleted --
             def plot_2dim_fstar():
                 plt.figure()
-                plt.imshow(fstar_i.reshape(self.GPR.grids[0].shape), origin='lower', extent=[param.SSN[0],
+                plt.imshow(fstar_i.reshape(self.gpr.grids[0].shape), origin='lower', extent=[param.SSN[0],
                                                                                              param.SSN[1],
                                                                                              param.SSN[0],
                                                                                              param.SSN[1]],
                            cmap='coolwarm')
-                plt.scatter(self.Data.X_obs[:, 0], self.Data.X_obs[:, 1], c=self.Data.Y_obs, cmap='coolwarm',
+                plt.scatter(self.data.X_obs[:, 0], self.data.X_obs[:, 1], c=self.data.Y_obs, cmap='coolwarm',
                             edgecolors='black',
                             linewidths=1)
-                plt.title("Repetition: {} Iterations {}".format(self.Data.repetition, self.Data.iteration + 1))
+                plt.title("Repetition: {} Iterations {}".format(self.data.repetition, self.data.iteration + 1))
 
             def plt_1dim_fstar():
                 plt.figure()
-                x = self.GPR.grids[0]
-                plt.plot(x, param.function(self.GPR.grids[0]), linestyle="--", c="black", linewidth=1)
+                x = self.gpr.grids[0]
+                plt.plot(x, param.function(self.gpr.grids[0]), linestyle="--", c="black", linewidth=1)
 
-                plt.scatter(self.Data.X_init, self.Data.Y_init, c="red", s=4)
-                plt.scatter(self.Data.X_obs[param.init_data_size:], self.Data.Y_obs[param.init_data_size:], c="black",
+                plt.scatter(self.data.X_init, self.data.Y_init, c="red", s=4)
+                plt.scatter(self.data.X_obs[param.init_data_size:], self.data.Y_obs[param.init_data_size:], c="black",
                             s=4)
 
                 plt.plot(x, fstar_i, c="blue", linewidth="1")
                 # plt.errorbar(x, self.Data.fstar_[-1], yerr=2 * np.diag(self.Data.Sstar_[-1]))
 
-                for i, txt in enumerate(range(len(self.Data.X_obs))):
+                for i, txt in enumerate(range(len(self.data.X_obs))):
                     if i >= param.init_data_size:
-                        plt.annotate((txt + 1) - param.init_data_size, (self.Data.X_obs[i], self.Data.Y_obs[i]),
-                                     xytext=(self.Data.X_obs[i] + 0.05, self.Data.Y_obs[i] + 0.05))
+                        plt.annotate((txt + 1) - param.init_data_size, (self.data.X_obs[i], self.data.Y_obs[i]),
+                                     xytext=(self.data.X_obs[i] + 0.05, self.data.Y_obs[i] + 0.05))
 
             if param.dim == 1:
                 plt_1dim_fstar()
             if param.dim == 2:
                 plot_2dim_fstar()
-            ###################################################################
 
             # update gpr data
-            self.GPR.update_data(x_new, y_new)
+            self.gpr.update_data(x_new, y_new)
             # save results, scores of iteration, and add the new points to the observed
-            self.Data.update_data_(fstar_i, Sstar_i, x_new, y_new)
-            self.Data.save_scores_(rsme_i, r2_i)
+            self.data.save_data_(fstar_i, Sstar_i, x_new, y_new)
+            self.data.save_scores_(rsme_i, r2_i)
 
-
-            # Calculate how the y_values of prediction change
-            # if param.dim == 2 and len(self.Data.fstar_) >= 2:
-            #     self.Eval.get_r2_difference_to_before(self.gpr.iter_nr, self.Data.X_obs, self.Data.X_test,
-            #                                           self.Data.fstar_[-1].flatten()[self.Data.test_data_indices],
-            #                                           self.Data.fstar_[-2].flatten()[self.Data.test_data_indices])
-
-            self.Data.iteration += 1
+            self.data.iteration += 1
             return 0
 
         return 1
@@ -951,5 +972,3 @@ class Gui():
     # show Gui
     def show(self):
         self.root.mainloop()
-
-

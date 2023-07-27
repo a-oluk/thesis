@@ -1,4 +1,3 @@
-
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -133,7 +132,7 @@ class Acquisition:
             - shape_like: Shape of the output acquisition function.
 
         Returns:
-            - aquisition_function: Acquisition function.
+            - acquisition_function: Acquisition function.
         """
         def get_ei_term(Sstar, shape_like):
             """
@@ -188,24 +187,25 @@ class Acquisition:
             max_val = matrix.max()
             matrix_norm = np.divide(matrix, max_val)
             return matrix_norm
+        if self.ei == False and self.gf == False:
+            return None
+        else:
+            acquisition_function = np.zeros(shape_like)
+            if self.ei:
+                ei_term = get_ei_term(Sstar, shape_like)
+                if self.normalize:
+                    ei_term = norm_matrix(ei_term)
+                acquisition_function += self.alpha * ei_term
 
-        aquisition_function = np.zeros(shape_like)
+            if self.gf:
+                gf_term = get_gf_term(Xstar, fstar, x_obs, y_obs, shape_like)
+                if self.normalize:
+                    gf_term = norm_matrix(gf_term)
+                acquisition_function += (1 - self.alpha) * gf_term
 
-        if self.ei:
-            ei_term = get_ei_term(Sstar, shape_like)
-            if self.normalize:
-                ei_term = norm_matrix(ei_term)
-            aquisition_function += self.alpha * ei_term
+            return acquisition_function
 
-        if self.gf:
-            gf_term = get_gf_term(Xstar, fstar, x_obs, y_obs, shape_like)
-            if self.normalize:
-                gf_term = norm_matrix(gf_term)
-            aquisition_function += (1 - self.alpha) * gf_term
-
-        return aquisition_function
-
-    def get_new_x_for_eigf(self, aquisition_function, Xstar):
+    def get_new_x(self, acquisition_function, Xstar):
         """
         Determines the new sample point based on the acquisition function.
         Instead of optimization algorithm, get max value.
@@ -217,7 +217,10 @@ class Acquisition:
         Returns:
             - new_x: New sample point
         """
-        max_index = np.argmax(aquisition_function)
-        indices = np.unravel_index(max_index, np.shape(aquisition_function))
-        idx = np.ravel_multi_index(indices, aquisition_function.shape)
-        return np.array([Xstar[idx]])
+        if acquisition_function is None:
+            return None
+        else:
+            max_index = np.argmax(acquisition_function)
+            indices = np.unravel_index(max_index, np.shape(acquisition_function))
+            idx = np.ravel_multi_index(indices, acquisition_function.shape)
+            return np.array([Xstar[idx]])

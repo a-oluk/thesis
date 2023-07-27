@@ -50,9 +50,9 @@ class Data:
         #print("RESET WORKED")
 
     # save results and add the new X and Y to observed points
-    def update_data_(self, fstar_i, Sstar_i, x_new, y_new):
+    def save_data_(self, fstar_i, Sstar_i, x_new, y_new):
         """
-        Updates the observed data and stores intermediate results.
+        Saves the observed data and stores intermediate results.
 
         Inputs:
             - fstar_i: Mean prediction vector.
@@ -68,7 +68,6 @@ class Data:
         self.Sstar_.append(Sstar_i)
         self.X_obs = np.vstack([self.X_obs, x_new])
         self.Y_obs = np.append(self.Y_obs, y_new)
-        return self.X_obs, self.Y_obs
 
     def get_prediction(self, fstar, indices):
         """
@@ -105,7 +104,7 @@ class Data:
             - r2_i: R-squared (R2) score.
         """
         self.rsme_score_.append(rsme_i)
-        self.r2_score_.append(r2_i)
+        self.r2_score_.append(max(0,r2_i))
 
     def save_scores__(self):
         """
@@ -118,7 +117,7 @@ class Data:
         self.rsme_score__.append(self.rsme_score_)
 
     # Update final score of the repetition
-    def save_final_score(self, rsme_i, r2_i):
+    def save_final_scores(self, rsme_i, r2_i):
         """
         Saves the final RSME and R-squared (R2) scores for the current repetition
 
@@ -132,7 +131,7 @@ class Data:
         self.final_score__.append([rsme_i, r2_i])
         return self.final_score__
 
-    def save_data_from_repetition(self):
+    def save_data__(self):
         """
         Saves the observed data and results of repetition
 
@@ -145,7 +144,7 @@ class Data:
         self.fstar__.append(self.fstar_)
         self.Sstar__.append(self.Sstar_)
 
-    def save_average_scores(self, r2__average, rsme__average):
+    def save_average_scores__(self, r2__average, rsme__average):
         """
         Saves the average R2 and RSME scores over all repetitions
 

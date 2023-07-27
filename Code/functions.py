@@ -5,34 +5,54 @@ import numpy as np
 
 
 
-# 1-dimensional target functions
 
-def function_1dim(X):
-    return 2 * np.sin(2 * X) + X - 11
+def function_1dim_linear(X):
+    return 3*X+2
+def function_1dim_poly(X):
+    return 1/56 *( (3125/16807)*X**5 -(4/27)*X**4 +(35/8)*X**2-78*X+300)
+def function_1dim_perio(X):
+    return 8* np.sin(2 * X)
+
+def function_1dim_comb(X):
+    return 10*np.sin(3/2*X)+0.5*X-0.4*X**2+6
+
+# 2-dimensional target functions
+def function_2dim_linear(X):
+    return -3 * (X[:, 0] - 2) - 2 * X[:, 1] + 2
+def function_2dim_poly(X):
+    return 1/5*(X[:, 0]**2 +0.5*X[:, 0]**2 + 0.2*X[:, 1]*3 - 2*X[:, 1]**2- 2*X[:, 0]- 0.2*X[:, 1]**3+15)
+def function_2dim_perio(X):
+    return np.sin(X[:, 0]) +  np.cos(X[:, 1])
+
+def function_2dim_comb(X):
+    return np.sin(X[:, 0])+ np.cos(X[:, 1])  + 0.1*(X[:, 1]-1)**2 + X[:, 0]*0.2
+
+# def function_1dim(X):
+#     return 2 * np.sin(2 * X) + X - 11
+#
+#
+# @np.vectorize
+# def function_1dim_1(X):
+#     if X < -5:
+#         return np.sin(3 * X) * X
+#     elif X >= -5 and X < 5.5:
+#         return (-X - 2)
+#     else:
+#         return 2 * np.sin(2 * X) + X - 11
 
 
-@np.vectorize
-def function_1dim_1(X):
-    if X < -5:
-        return np.sin(3 * X) * X
-    elif X >= -5 and X < 5.5:
-        return (-X - 2)
-    else:
-        return 2 * np.sin(2 * X) + X - 11
+#def function_1dim_2(X):
+#    return 10 * np.sin(2 * X) - X ** 2 - 10
 
 
-def function_1dim_2(X):
-    return 10 * np.sin(2 * X) - X ** 2 - 10
-
-
-@np.vectorize
-def function_1dim_3(X):
-    # From paper of EIGF and which is from: Bayesian treed Gaussian process models - RB Gramacy
-    # https://www.proquest.com/docview/305004297?pq-origsite=gscholar&fromopenview=true
-    if X < 10:
-        return np.sin(np.pi * X / 5) + 1 / 5 * np.cos(4 * np.pi * X / 5)
-    else:
-        return X / 10 - 0.8
+# @np.vectorize
+# def function_1dim_3(X):
+#     # From paper of EIGF and which is from: Bayesian treed Gaussian process models - RB Gramacy
+#     # https://www.proquest.com/docview/305004297?pq-origsite=gscholar&fromopenview=true
+#     if X < 10:
+#         return np.sin(np.pi * X / 5) + 1 / 5 * np.cos(4 * np.pi * X / 5)
+#     else:
+#         return X / 10 - 0.8
 
 
 # 2-dimensional target functions
@@ -122,3 +142,10 @@ def linear_kernel(x1, x2,beta_0=0,beta_1=1):
     - K: Kernel matrix.
     """
     return beta_1*np.dot(x1, x2.T)+beta_0
+
+# DREIDIMENSIONAL und VIERDIMENSIONALE FUNKTION
+def h(X):
+    return X[:, 0]**2 - X[:, 0]*X[:, 1] + X[:, 2]**3 - X[:, 0]*X[:, 1]*X[:, 2] + 2*np.sin(X[:, 0]*X[:, 1])
+
+def l(X):
+    return X[:, 0]**2 - 2*X[:, 0]*X[:, 1] + X[:, 3]**3 - X[:, 1]*X[:, 2] + 2*np.sin(X[:, 0]*X[:, 3])

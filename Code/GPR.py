@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class GaussianProcessRegressor:
+class GaussProcessRegression:
     def __init__(self, kernel, function, dim, X_init, Y_init, SSN):
         """
             Initialize the GaussianProcessRegressor.
@@ -32,6 +32,7 @@ class GaussianProcessRegressor:
         # Create a array of all possible combinations of grid points
         self.Xstar = np.vstack([grid.flatten() for grid in self.grids]).T
 
+
     def gp(self):
         """
             Perform gaussian process regression.
@@ -61,7 +62,6 @@ class GaussianProcessRegressor:
             print("Matrix inversion failed with Cholesky")
             try:
                 K_inv = np.linalg.inv(K + 1e-8 * np.eye(K.shape[0]))  # Calculate the inverse of K with jittering
-
                 # Calculate the predicted function values and covariance matrix
                 self.fstar = np.dot(self.kernel(self.Xstar, self.X_observed), np.dot(K_inv, self.Y_observed))
                 self.Sstar = K_starstar - np.dot(K_star_, np.dot(K_inv, K_star))
